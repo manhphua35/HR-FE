@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for sidebar */
+.sidebar {
+  transition: width 0.3s ease;
+}
+
+.sidebar.collapsed {
+  width: 5rem;
+}
+
+.sidebar.collapsed .nav-text,
+.sidebar.collapsed .logo-text {
+  display: none;
+}
+
+.main-content {
+  transition: margin-left 0.3s ease;
+}
+
+/* Charts container */
+.chart-container {
+  position: relative;
+  height: 300px;
+}
+
+/* Card hover effects */
+.employee-card {
+  transition: all 0.3s ease;
+}
+
+.employee-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Notification badge */
+.notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
