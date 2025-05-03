@@ -1,17 +1,77 @@
-import axios from 'axios';
+// Import axiosInstance thay vì axios mặc định
+import axiosInstance from '../config/axios';
 import { API_URL } from '../config';
 
-export interface Employee {
+// Interface cho Department (dựa trên dữ liệu API mẫu)
+export interface Department {
   id: number;
   name: string;
-  email: string;
-  position: string;
-  department: string;
-  phone: string;
-  status: string;
-  avatar: string;
-  joinDate: string;
+  description?: string; // Optional based on API data
 }
+
+// Interface cho Position (dựa trên dữ liệu API mẫu)
+export interface Position {
+  id: string; // UUID
+  title: string;
+  level?: number; // Optional based on API data
+  departmentId?: number; // Optional based on API data
+}
+
+// Interface cho Role (dựa trên dữ liệu API mẫu)
+export interface Role {
+  id: number;
+  roleType: string; // e.g., "SYSTEM_ADMIN", "HR_STAFF"
+  name: string;
+  description?: string;
+  createdAt?: string; // Optional based on API data
+  updatedAt?: string; // Optional based on API data
+}
+
+
+// Interface cho dữ liệu nhân viên trả về từ API (GET /list, /detail)
+// Cập nhật để khớp với cấu trúc dữ liệu API thực tế
+export interface Employee {
+  id: number;
+  username: string;
+  fullName: string;
+  email: string;
+  position: Position | null; // Updated type
+  department: Department | null; // Updated type
+  phone: string | null; // Updated type to allow null
+  status?: string; // Status không có trong API mẫu, đánh dấu optional
+  avatar: string | null; // Updated type to allow null (API mẫu không có)
+  hireDate: string; // Giữ là string, cần xử lý định dạng nếu cần
+  role: Role | null; // Updated type
+  // Các trường khác từ API mẫu
+  departmentId: number | null;
+  positionId: string | null; // UUID
+  roleId: number; // Vẫn giữ roleId nếu cần thiết
+  remainingLeaves?: number; // Optional based on API data
+  baseSalary?: string; // Optional based on API data, có thể là number?
+  isActive?: boolean; // Optional based on API data
+  createdAt?: string; // Optional based on API data
+  updatedAt?: string; // Optional based on API data
+}
+
+// Interface cho dữ liệu gửi đi khi tạo nhân viên (POST /create)
+// Cập nhật để phù hợp hơn với cấu trúc Employee (có thể cần gửi ID thay vì object)
+export interface CreateEmployeePayload {
+  username: string;
+  password?: string; // Password thường chỉ bắt buộc khi tạo
+  fullName: string;
+  email: string;
+  positionId: string | null; // Gửi positionId thay vì object
+  departmentId: number | null; // Gửi departmentId thay vì object
+  phone?: string | null; // Allow null
+  status?: string; // Optional?
+  avatar?: string | null; // Allow null
+  hireDate: string;
+  roleId: number;
+  // Thêm các trường cần thiết khác khi tạo
+  baseSalary?: string; // Hoặc number
+  remainingLeaves?: number;
+}
+
 
 interface ApiResponse<T> {
   data: T;
@@ -21,26 +81,37 @@ interface ApiResponse<T> {
 
 export const EmployeeService = {
   getAllEmployees: async (): Promise<Employee[]> => {
-    const response = await axios.get<ApiResponse<Employee[]>>(`${API_URL}/users/list`);
+    // Sử dụng axiosInstance
+    const response = await axiosInstance.get<ApiResponse<Employee[]>>(`/users/list`);
     return response.data.data;
   },
 
   getEmployeeById: async (id: number): Promise<Employee> => {
-    const response = await axios.get<ApiResponse<Employee>>(`${API_URL}/users/detail/${id}`);
+    // Sử dụng axiosInstance
+    const response = await axiosInstance.get<ApiResponse<Employee>>(`/users/detail/${id}`);
     return response.data.data;
   },
 
-  createEmployee: async (employeeData: Omit<Employee, 'id'>): Promise<Employee> => {
-    const response = await axios.post<ApiResponse<Employee>>(`${API_URL}/users/create`, employeeData);
+  // Cập nhật kiểu dữ liệu cho employeeData thành CreateEmployeePayload
+  // Đảm bảo kiểu tham số là CreateEmployeePayload đã export
+  createEmployee: async (employeeData: CreateEmployeePayload): Promise<Employee> => {
+    // Sử dụng axiosInstance
+    const response = await axiosInstance.post<ApiResponse<Employee>>(`/users/create`, employeeData);
+    // API có thể trả về Employee đầy đủ hoặc chỉ thông báo thành công
+    // Nếu chỉ trả về thông báo, cần điều chỉnh kiểu trả về của hàm này
     return response.data.data;
   },
 
-  updateEmployee: async (id: number, employeeData: Partial<Employee>): Promise<Employee> => {
-    const response = await axios.put<ApiResponse<Employee>>(`${API_URL}/users/update/${id}`, employeeData);
+  // Cập nhật kiểu dữ liệu cho employeeData thành Partial<CreateEmployeePayload> hoặc interface riêng
+  // Đảm bảo kiểu tham số là Partial<CreateEmployeePayload> đã export
+  updateEmployee: async (id: number, employeeData: Partial<CreateEmployeePayload>): Promise<Employee> => {
+    // Sử dụng axiosInstance
+    const response = await axiosInstance.put<ApiResponse<Employee>>(`/users/update/${id}`, employeeData);
     return response.data.data;
   },
 
   deleteEmployee: async (id: number): Promise<void> => {
-    await axios.delete(`${API_URL}/users/delete/${id}`);
+    // Sử dụng axiosInstance
+    await axiosInstance.delete(`/users/delete/${id}`);
   }
 };

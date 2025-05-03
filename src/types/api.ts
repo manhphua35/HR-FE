@@ -39,18 +39,31 @@ export interface PerformanceReview {
   improvement?: string;
 }
 
-// User Types
+// User Types (Matching backend response)
 export interface User {
   id: number;
   username: string;
-  name: string;
   email: string;
-  role: 'admin' | 'hr_manager' | 'department_manager' | 'employee';
+  fullName: string; // Added from backend response
+  role: { // Updated to match nested structure from API response
+    id: number;
+    roleType: 'SYSTEM_ADMIN' | 'HR_MANAGER' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
+    name: string;
+    description: string;
+  };
+  // permissions: string[]; // Assuming permissions might not be directly on user object based on response
+  departmentId: number | null;
+  roleId: number; // Added from response
+  hireDate: string; // Added from response
+  remainingLeaves: number; // Added from response
+  baseSalary: string; // Added from response
+  isActive: boolean; // Added from response
+  // Optional fields
   department?: string;
   position?: string;
   avatar?: string;
   lastLogin?: string;
-  status: 'active' | 'inactive';
+  status?: 'active' | 'inactive'; // Made optional as it wasn't in the login response
 }
 
 // Dashboard Types

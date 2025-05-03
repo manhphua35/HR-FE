@@ -15,7 +15,7 @@ const CreateLeaveRequestModal: React.FC<CreateLeaveRequestModalProps> = ({
   const [formData, setFormData] = useState<CreateLeaveRequest>({
     startDate: '',
     endDate: '',
-    type: 'annual',
+    type: 'ANNUAL', // Changed initial state to uppercase
     reason: ''
   });
 
@@ -48,10 +48,11 @@ const CreateLeaveRequestModal: React.FC<CreateLeaveRequestModalProps> = ({
                 })}
                 required
               >
-                <option value="annual">Nghỉ phép năm</option>
-                <option value="sick">Nghỉ ốm</option>
-                <option value="unpaid">Nghỉ không lương</option>
-                <option value="other">Khác</option>
+                {/* Changed option values to uppercase to match backend enum */}
+                <option value="ANNUAL">Nghỉ phép năm</option>
+                <option value="SICK">Nghỉ ốm</option>
+                <option value="UNPAID">Nghỉ không lương</option>
+                <option value="OTHER">Khác</option>
               </select>
             </div>
 

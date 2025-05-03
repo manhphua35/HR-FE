@@ -1,18 +1,77 @@
-import axios from 'axios';
+import axiosInstance from '../config/axios'; // Import axiosInstance as default
 import { ApiResponse } from '../types/api';
 
-interface DashboardStats {
+// --- Định nghĩa Interfaces mới khớp với API Response ---
+
+interface OverviewStats {
   totalEmployees: number;
-  departmentsCount: number;
+  totalDepartments: number; // Đổi tên từ departmentsCount
+  activeLeaves: number;
+  currentTrainings: number;
+  totalSalary: number;
   averagePerformance: number;
-  issuesCount: number;
-  attendanceRate: number;
-  leaveRequests: number;
-  openPositions: number;
-  projectsCount: number;
 }
 
-interface DepartmentStats {
+interface DepartmentStatDetail {
+  departmentId: number;
+  departmentName: string;
+  employeeCount: number;
+  activeLeaves: number;
+  ongoingTrainings: number;
+  averagePerformance: number;
+  totalSalary: number;
+}
+
+interface CountByDepartment {
+  department: string;
+  count: number;
+}
+
+interface ScoreByDepartment {
+  department: string;
+  score: number;
+}
+
+interface AmountByDepartment {
+    department: string;
+    amount: number;
+}
+
+interface LeaveStats {
+  total: number;
+  byDepartment: CountByDepartment[];
+}
+
+interface TrainingStats {
+  total: number;
+  byDepartment: CountByDepartment[];
+}
+
+interface PerformanceStats {
+  averageScore: number; // Lưu ý: overview cũng có averagePerformance
+  byDepartment: ScoreByDepartment[];
+}
+
+interface SalaryStats {
+    total: number;
+    byDepartment: AmountByDepartment[];
+}
+
+// Interface chính cho toàn bộ response
+interface DashboardData {
+  overview: OverviewStats;
+  departmentStats: DepartmentStatDetail[];
+  leaveStats: LeaveStats;
+  trainingStats: TrainingStats;
+  performanceStats: PerformanceStats;
+  salaryStats: SalaryStats;
+}
+
+
+// --- Các interface cũ không còn dùng cho getDashboardData ---
+// interface DashboardStats { ... } // Đã thay bằng DashboardData
+
+interface DepartmentStats { // Giữ lại cho getDepartmentStats nếu endpoint đó khác
   employeeCount: number;
   activeProjects: number;
   pendingLeaveRequests: number;
@@ -50,67 +109,77 @@ interface Activity {
 }
 
 export class DashboardService {
-  private static baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+  // No need for baseUrl, axiosInstance handles it
+  // No need for manual headers, axiosInstance handles Authorization
 
-  static async getAdminStats(): Promise<DashboardStats> {
-    const response = await axios.get<ApiResponse<DashboardStats>>(
-      `${this.baseUrl}/dashboard/admin`,
+  // Updated to accept month and year parameters and return the new DashboardData type
+  static async getDashboardData(month: number, year: number): Promise<DashboardData> {
+    // Call the correct endpoint using axiosInstance with query parameters
+    // Thay đổi kiểu mong đợi thành DashboardData
+    const response = await axiosInstance.get<DashboardData>(
+      '/reports/dashboard-data',
       {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
+        params: { month, year } // Pass month and year as query params
       }
     );
-    return response.data.data;
+    // Giả định API trả về trực tiếp đối tượng DashboardStats, không có wrapper ApiResponse
+    // Trả về response.data trực tiếp
+    return response.data;
   }
 
-  static async getHrStats(): Promise<DashboardStats> {
-    const response = await axios.get<ApiResponse<DashboardStats>>(
-      `${this.baseUrl}/dashboard/hr`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      }
+  // Updated other methods to use axiosInstance for consistency
+  // Note: Endpoints for these might also need verification against backend routes
+  // TODO: Xác minh kiểu trả về thực tế cho getHrStats nếu endpoint /dashboard/hr tồn tại và khác /reports/dashboard-data
+  static async getHrStats(): Promise<any> { // Tạm thời dùng any, cần xác minh kiểu trả về
+    const response = await axiosInstance.get<any>(
+      '/dashboard/hr' // Keep endpoint for now, verify later if needed
     );
-    return response.data.data;
+    // Giả định API trả về trực tiếp, không có wrapper
+    return response.data;
   }
 
   static async getDepartmentStats(departmentId: string): Promise<DepartmentStats> {
-    const response = await axios.get<ApiResponse<DepartmentStats>>(
-      `${this.baseUrl}/dashboard/department/${departmentId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      }
+    // Thay đổi kiểu mong đợi từ ApiResponse<DepartmentStats> thành DepartmentStats
+    const response = await axiosInstance.get<DepartmentStats>(
+      `/dashboard/department/${departmentId}` // Keep endpoint for now, verify later if needed
     );
-    return response.data.data;
+    // Giả định API trả về trực tiếp, không có wrapper
+    return response.data;
   }
 
   static async getEmployeeStats(employeeId: string): Promise<EmployeeStats> {
-    const response = await axios.get<ApiResponse<EmployeeStats>>(
-      `${this.baseUrl}/dashboard/employee/${employeeId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      }
+    // Thay đổi kiểu mong đợi từ ApiResponse<EmployeeStats> thành EmployeeStats
+    const response = await axiosInstance.get<EmployeeStats>(
+      `/dashboard/employee/${employeeId}` // Keep endpoint for now, verify later if needed
     );
-    return response.data.data;
+    // Giả định API trả về trực tiếp, không có wrapper
+    return response.data;
   }
 
-  static async getRecentActivities(): Promise<Activity[]> {
-    const response = await axios.get<ApiResponse<Activity[]>>(
-      `${this.baseUrl}/dashboard/activities`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      }
-    );
-    return response.data.data;
-  }
+  // Commented out as no corresponding backend endpoint was found
+  // static async getRecentActivities(): Promise<Activity[]> {
+  //   const response = await axiosInstance.get<ApiResponse<Activity[]>>(
+  //     '/dashboard/activities'
+  //   );
+  //   return response.data.data;
+  // }
 }
 
-export type { DashboardStats, DepartmentStats, EmployeeStats, Schedule, Activity };
+// Xuất các kiểu mới
+export type {
+  OverviewStats,
+  DepartmentStatDetail,
+  CountByDepartment,
+  ScoreByDepartment,
+  AmountByDepartment,
+  LeaveStats,
+  TrainingStats,
+  PerformanceStats,
+  SalaryStats,
+  DashboardData,
+  // Giữ lại các kiểu cũ nếu các hàm khác còn dùng
+  DepartmentStats,
+  EmployeeStats,
+  Schedule,
+  Activity
+};

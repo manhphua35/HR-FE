@@ -26,7 +26,13 @@ const Performance: React.FC = () => {
 
   const fetchPlans = async () => {
     try {
-      const data = await PerformanceService.getPlans();
+      let data: PerformancePlan[];
+      // Check user role and call appropriate service function
+      if (currentUser?.role?.roleType === 'SYSTEM_ADMIN') {
+        data = await PerformanceService.getOverallPlans(); // Call new service for admin
+      } else {
+        data = await PerformanceService.getPlans(); // Existing call for others
+      }
       setPlans(data);
       setLoading(false);
     } catch (err) {
@@ -78,7 +84,8 @@ const Performance: React.FC = () => {
     return <div className="p-4 text-red-500">{error}</div>;
   }
 
-  const isManager = currentUser?.role === 'department_manager' || currentUser?.role === 'hr_manager';
+  // Updated role check to match backend permissions (only DEPARTMENT_MANAGER can create/add)
+  const isManager = currentUser?.role?.roleType === 'DEPARTMENT_MANAGER';
 
   return (
     <div className="p-6">

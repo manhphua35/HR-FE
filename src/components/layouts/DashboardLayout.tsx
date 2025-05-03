@@ -8,11 +8,11 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const { currentUser, logout } = useAuth();
   const location = useLocation();
 
-  const formatRole = (role?: User['role']) => {
-    if (!role) return '';
-    return role
+  const formatRole = (roleType?: User['role']['roleType']) => { // Access nested roleType
+    if (!roleType) return '';
+    return roleType
       .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()) // Add type for word, make rest lowercase
       .join(' ');
   };
 
@@ -62,32 +62,38 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <div className={`sidebar bg-indigo-800 text-white w-64 flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'collapsed' : ''}`}>
-        {/* Logo */}
-        <div className="p-4 flex items-center justify-between border-b border-indigo-700">
-          <div className="flex items-center">
-            <i className="fas fa-users-cog text-2xl mr-3"></i>
-            <span className="logo-text text-xl font-bold">HR Management</span>
+      {/* Updated width based on sidebarCollapsed state */}
+      <div className={`sidebar bg-indigo-800 text-white flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'w-20' : 'w-64'}`}>
+        {/* Logo and Toggle Button */}
+        {/* Adjusted structure for better toggle button positioning */}
+        <div className={`p-4 flex items-center border-b border-indigo-700 dark:border-indigo-900 relative ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
+          {/* Logo Icon and Text */}
+          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center w-full' : ''}`}>
+             <i className={`fas fa-users-cog text-2xl text-white ${sidebarCollapsed ? '' : 'mr-3'}`}></i>
+             <span className={`logo-text text-xl font-bold text-white transition-opacity duration-200 ${sidebarCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>HR Management</span>
           </div>
-          <button 
+          {/* Toggle Button - Always visible, positioned absolutely when collapsed */}
+          <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="text-white focus:outline-none"
+            className="text-white hover:text-indigo-200 focus:outline-none p-2 rounded-md absolute top-1/2 -right-3 transform -translate-y-1/2 bg-indigo-700 dark:bg-indigo-600 shadow-md" // Positioned outside when expanded
+            style={{ right: sidebarCollapsed ? 'auto' : '-0.75rem', left: sidebarCollapsed ? '-0.75rem' : 'auto' }} // Adjust left/right based on state
           >
-            <i className="fas fa-bars"></i>
+            {/* Change icon based on state */}
+            <i className={`fas ${sidebarCollapsed ? 'fa-arrow-right' : 'fa-arrow-left'}`}></i>
           </button>
         </div>
 
         {/* User Profile */}
-        <div className="p-4 flex items-center border-b border-indigo-700">
-          <img 
-            src={currentUser?.avatar || `https://ui-avatars.com/api/?name=${currentUser?.name || 'User'}&background=0D8ABC&color=fff`} 
-            alt="Profile" 
-            className="w-10 h-10 rounded-full"
+        <div className={`p-4 flex items-center border-b border-indigo-700 dark:border-indigo-900 ${sidebarCollapsed ? 'justify-center' : ''}`}>
+          <img
+            src={currentUser?.avatar || `https://ui-avatars.com/api/?name=${currentUser?.fullName || 'User'}&background=0D8ABC&color=fff`}
+            alt="Profile"
+            className="w-10 h-10 rounded-full flex-shrink-0"
           />
-          <div className="ml-3">
-            <div className="font-medium">{currentUser?.name || 'User'}</div>
-            <div className="text-xs text-indigo-200">
-              {formatRole(currentUser?.role)}
+          <div className={`ml-3 transition-opacity duration-200 ${sidebarCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>
+            <div className="font-medium text-white">{currentUser?.fullName || 'User'}</div>
+            <div className="text-xs text-indigo-200 dark:text-indigo-300">
+              {formatRole(currentUser?.role?.roleType)}
             </div>
           </div>
         </div>
@@ -99,12 +105,12 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
               <li key={item.path}>
                 <Link
                   to={item.path}
-                  className={`px-4 py-3 flex items-center hover:bg-indigo-700 ${
-                    location.pathname === item.path ? 'bg-indigo-900' : ''
+                  className={`px-4 py-3 flex items-center text-indigo-100 hover:bg-indigo-700 dark:hover:bg-indigo-600 ${sidebarCollapsed ? 'justify-center' : ''} ${
+                    location.pathname === item.path ? 'bg-indigo-900 dark:bg-indigo-700' : ''
                   }`}
                 >
-                  <i className={`${item.icon} mr-3`}></i>
-                  <span className="nav-text">{item.name}</span>
+                  <i className={`${item.icon} ${sidebarCollapsed ? '' : 'mr-3'}`}></i>
+                  <span className={`nav-text transition-opacity duration-200 ${sidebarCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>{item.name}</span>
                 </Link>
               </li>
             ))}
@@ -112,31 +118,35 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
         </nav>
 
         {/* Logout */}
-        <div className="p-4 border-t border-indigo-700">
-          <button 
+        <div className="p-4 border-t border-indigo-700 dark:border-indigo-900">
+          <button
             onClick={logout}
-            className="flex items-center text-white hover:text-indigo-200 w-full"
+            className={`flex items-center text-indigo-100 hover:text-indigo-200 dark:hover:text-indigo-300 w-full ${sidebarCollapsed ? 'justify-center' : ''}`}
           >
-            <i className="fas fa-sign-out-alt mr-3"></i>
-            <span className="nav-text">Đăng xuất</span>
+            <i className={`fas fa-sign-out-alt ${sidebarCollapsed ? '' : 'mr-3'}`}></i>
+            <span className={`nav-text transition-opacity duration-200 ${sidebarCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>Đăng xuất</span>
           </button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className={`flex-1 overflow-hidden flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'ml-20' : 'ml-64'}`}>
+      <div className={`flex-1 overflow-hidden flex flex-col transition-all duration-300 ml-2 border-l border-gray-200`}>
         {/* Top Navigation */}
-        <header className="bg-white shadow-sm">
+        {/* Added dark mode classes */}
+        <header className="bg-white dark:bg-gray-800 shadow-sm">
           <div className="px-6 py-4 flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-800">
+            {/* Added dark mode text color */}
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">
               {navigationItems.find(item => item.path === location.pathname)?.name || 'Dashboard'}
             </h1>
 
-            <div className="flex items-center space-x-4">
+            {/* Added dark mode text color for icons */}
+            <div className="flex items-center space-x-4 text-gray-600 dark:text-gray-400">
               {/* Notifications */}
               <div className="relative">
-                <button className="text-gray-600 hover:text-gray-900 focus:outline-none">
+                <button className="hover:text-gray-900 dark:hover:text-gray-200 focus:outline-none">
                   <i className="fas fa-bell text-xl"></i>
+                  {/* Notification badge colors can remain */}
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                     3
                   </span>
@@ -145,8 +155,9 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
               {/* Messages */}
               <div className="relative">
-                <button className="text-gray-600 hover:text-gray-900 focus:outline-none">
+                <button className="hover:text-gray-900 dark:hover:text-gray-200 focus:outline-none">
                   <i className="fas fa-envelope text-xl"></i>
+                  {/* Message badge colors can remain */}
                   <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                     5
                   </span>
@@ -155,10 +166,10 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
               {/* Profile */}
               <div className="relative">
-                <button className="flex items-center text-gray-600 hover:text-gray-900 focus:outline-none">
-                  <img 
-                    src={currentUser?.avatar || `https://ui-avatars.com/api/?name=${currentUser?.name || 'User'}&background=0D8ABC&color=fff`}
-                    alt="Profile" 
+                <button className="flex items-center hover:text-gray-900 dark:hover:text-gray-200 focus:outline-none">
+                  <img
+                    src={currentUser?.avatar || `https://ui-avatars.com/api/?name=${currentUser?.fullName || 'User'}&background=0D8ABC&color=fff`}
+                    alt="Profile"
                     className="w-8 h-8 rounded-full"
                   />
                 </button>
@@ -168,9 +179,10 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
-          <div className="container mx-auto px-6 py-8">
-            {children}
+        {/* Added dark mode background */}
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-gray-900">
+          <div className="px-8 py-6">
+            {children} {/* Children components should handle their own dark mode styling */}
           </div>
         </main>
       </div>

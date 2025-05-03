@@ -14,18 +14,19 @@ const Dashboard: React.FC = () => {
     return <div className="p-6 text-center">Please log in to view your dashboard.</div>;
   }
 
-  // Render appropriate dashboard based on user role
-  switch(currentUser.role) {
-    case 'admin':
+  // Render appropriate dashboard based on user roleType
+  switch(currentUser.role?.roleType) { // Access nested role.roleType
+    case 'SYSTEM_ADMIN': // Use backend role names
       return <AdminDashboard />;
-    case 'hr_manager':
+    case 'HR_MANAGER': // Use backend role names
       return <HrManagerDashboard />;
-    case 'department_manager':
+    case 'DEPARTMENT_MANAGER': // Use backend role names
+      // Assuming department info is still needed, might need adjustment based on User type update
       return <DepartmentManagerDashboard department={currentUser.department} />;
-    case 'employee':
+    case 'EMPLOYEE': // Use backend role names
       return <EmployeeDashboard userId={currentUser.id.toString()} />;
     default:
-      return <div className="p-6 text-center">Invalid user role</div>;
+      return <div className="p-6 text-center">Invalid user role: {currentUser.role?.roleType || 'undefined'}</div>; // Safely access nested role.roleType
   }
 };
 

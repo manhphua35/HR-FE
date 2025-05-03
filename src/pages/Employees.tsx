@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { EmployeeService, Employee } from '../services/EmployeeService';
+// Import các modal
+import CreateEmployeeModal from '../components/modals/CreateEmployeeModal';
+import EditEmployeeModal from '../components/modals/EditEmployeeModal';
+import ViewEmployeeModal from '../components/modals/ViewEmployeeModal';
+import ConfirmDeleteModal from '../components/modals/ConfirmDeleteModal'; // Import modal xác nhận xóa
+
+// Định nghĩa các trạng thái có thể có để lọc, dựa trên trường `isActive` từ API
+const POSSIBLE_STATUSES = ['Đang làm việc', 'Đã nghỉ việc'];
+
+// Không cần STATUS_MAP nữa vì lọc trực tiếp bằng isActive
 
 const Employees: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -8,6 +18,24 @@ const Employees: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  
+  // State cho modal sửa
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  
+  // State cho modal xem chi tiết
+  const [isViewModalOpen, setIsViewModalOpen] = useState<boolean>(false);
+  const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
+  
+  // State cho modal xác nhận xóa
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [deletingEmployeeInfo, setDeletingEmployeeInfo] = useState<{ id: number; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false); // State loading riêng cho việc xóa
+
+  // State cho phân trang
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [itemsPerPage] = useState<number>(10); // Số nhân viên mỗi trang, có thể thay đổi
 
   useEffect(() => {
     fetchEmployees();
@@ -29,21 +57,196 @@ const Employees: React.FC = () => {
 
   // Filter employees based on search term and filters
   const filteredEmployees = employees.filter(employee => {
-    const matchesSearch = employee.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         employee.position.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesDepartment = departmentFilter === "" || employee.department === departmentFilter;
-    const matchesStatus = statusFilter === "" || employee.status === statusFilter;
-    
+    // Kiểm tra null/undefined trước khi gọi toLowerCase() bằng optional chaining (?.)
+    // và cung cấp giá trị mặc định ('') nếu thuộc tính không tồn tại
+    // Đổi nameMatch thành fullNameMatch và sử dụng employee.fullName
+    const fullNameMatch = (employee.fullName || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const emailMatch = (employee.email || '').toLowerCase().includes(searchTerm.toLowerCase());
+    // Sửa lỗi: Kiểm tra tường minh kiểu dữ liệu của position trước khi gọi toLowerCase
+    const positionValue = employee.position;
+    const positionString = typeof positionValue === 'string' ? positionValue : ''; // Chỉ lấy giá trị nếu là string
+    const positionMatch = positionString.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesSearch = fullNameMatch || emailMatch || positionMatch; // Cập nhật matchesSearch
+
+    // Kiểm tra department và status với chuẩn hóa chuỗi (trim, lowercase)
+    const departmentName = (employee.department?.name || '').trim().toLowerCase();
+    const filterDepartment = departmentFilter.trim().toLowerCase();
+    const matchesDepartment = filterDepartment === "" || departmentName === filterDepartment;
+
+    // Lọc theo trạng thái isActive
+    const filterStatus = statusFilter.trim().toLowerCase();
+    let matchesStatus = true; // Mặc định là khớp nếu không chọn bộ lọc
+    if (filterStatus === "đang làm việc") {
+      matchesStatus = employee.isActive === true;
+    } else if (filterStatus === "đã nghỉ việc") {
+      matchesStatus = employee.isActive === false;
+    }
+
+    // Ghi log để kiểm tra (có thể xóa sau khi debug xong)
+    // if (filterStatus !== "") {
+    //    console.log(`Filtering by status: Filter='${filterStatus}', Employee Active='${employee.isActive}', Match=${matchesStatus}`);
+    // }
+
+
     return matchesSearch && matchesDepartment && matchesStatus;
   });
 
-  // Get unique departments for filter dropdown
-  const departments = Array.from(new Set(employees.map(employee => employee.department)));
+  // Tính toán phân trang
+  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentEmployees = filteredEmployees.slice(startIndex, endIndex);
+
+  // Hàm xử lý khi thêm nhân viên thành công (đóng modal, tải lại danh sách)
+  const handleAddEmployeeSuccess = () => {
+    setIsAddModalOpen(false);
+    fetchEmployees();
+  };
   
-  // Get unique statuses for filter dropdown
-  const statuses = Array.from(new Set(employees.map(employee => employee.status)));
+  // Hàm xử lý khi sửa nhân viên thành công
+  const handleEditSuccess = () => {
+    setIsEditModalOpen(false);
+    setEditingEmployee(null); // Xóa dữ liệu nhân viên đang sửa
+    fetchEmployees();
+  };
+
+  // Hàm mở modal sửa và set dữ liệu nhân viên
+  const handleOpenEditModal = (employee: Employee) => {
+    setEditingEmployee(employee);
+    setIsEditModalOpen(true);
+  };
+  
+  // Hàm mở modal xem chi tiết và set dữ liệu nhân viên
+  const handleOpenViewModal = (employee: Employee) => {
+    setViewingEmployee(employee);
+    setIsViewModalOpen(true);
+  };
+
+  // Hàm xử lý chuyển trang
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Logic tạo các nút phân trang (ví dụ đơn giản)
+  const renderPaginationButtons = () => {
+    const buttons = [];
+    // Nút Previous
+    buttons.push(
+      <button
+        key="prev"
+        onClick={() => handlePageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <span className="sr-only">Previous</span>
+        <i className="fas fa-chevron-left h-5 w-5"></i>
+      </button>
+    );
+
+    // Nút số trang (hiển thị tối đa 5 nút xung quanh trang hiện tại)
+    const maxButtonsToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxButtonsToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxButtonsToShow - 1);
+
+    if (endPage - startPage + 1 < maxButtonsToShow) {
+      startPage = Math.max(1, endPage - maxButtonsToShow + 1);
+    }
+    
+    if (startPage > 1) {
+       buttons.push(<button key={1} onClick={() => handlePageChange(1)} className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">1</button>);
+       if (startPage > 2) {
+         buttons.push(<span key="start-ellipsis" className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">...</span>);
+       }
+    }
+
+
+    for (let i = startPage; i <= endPage; i++) {
+      buttons.push(
+        <button
+          key={i}
+          onClick={() => handlePageChange(i)}
+          aria-current={currentPage === i ? 'page' : undefined}
+          className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+            currentPage === i
+              ? 'z-10 bg-blue-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600'
+              : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50'
+          } focus:z-20 focus:outline-offset-0`}
+        >
+          {i}
+        </button>
+      );
+    }
+    
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        buttons.push(<span key="end-ellipsis" className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">...</span>);
+      }
+      buttons.push(<button key={totalPages} onClick={() => handlePageChange(totalPages)} className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">{totalPages}</button>);
+    }
+
+
+    // Nút Next
+    buttons.push(
+      <button
+        key="next"
+        onClick={() => handlePageChange(currentPage + 1)}
+        disabled={currentPage === totalPages || totalPages === 0}
+        className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <span className="sr-only">Next</span>
+        <i className="fas fa-chevron-right h-5 w-5"></i>
+      </button>
+    );
+
+    return buttons;
+  };
+
+  // Hàm mở modal xác nhận xóa
+  const handleDelete = (id: number, name: string) => {
+    setDeletingEmployeeInfo({ id, name });
+    setIsDeleteModalOpen(true);
+  };
+
+  // Hàm thực thi việc xóa sau khi xác nhận
+  const executeDelete = async () => {
+    if (!deletingEmployeeInfo) return;
+
+    setIsDeleting(true); // Bắt đầu loading xóa
+    setError(""); // Xóa lỗi cũ nếu có
+
+    try {
+      await EmployeeService.deleteEmployee(deletingEmployeeInfo.id);
+      // Cân nhắc dùng toast notification thay cho alert
+      alert(`Đã xóa thành công nhân viên "${deletingEmployeeInfo.name}"!`);
+      setIsDeleteModalOpen(false); // Đóng modal
+      setDeletingEmployeeInfo(null); // Reset thông tin
+      fetchEmployees(); // Tải lại danh sách
+    } catch (err) {
+      const errorMsg = `Xóa nhân viên "${deletingEmployeeInfo.name}" thất bại: ${err instanceof Error ? err.message : String(err)}`;
+      setError(errorMsg); // Hiển thị lỗi ở đầu trang
+      console.error(err);
+      // Cân nhắc hiển thị lỗi trong modal hoặc dùng toast
+      alert(errorMsg);
+      setIsDeleteModalOpen(false); // Đóng modal ngay cả khi lỗi
+      setDeletingEmployeeInfo(null);
+    } finally {
+      setIsDeleting(false); // Kết thúc loading xóa
+    }
+  };
+
+
+  // Get unique department names for filter dropdown, lọc bỏ giá trị null/undefined/empty
+  // Chuẩn hóa và lấy tên phòng ban duy nhất cho dropdown
+  const departments = Array.from(
+    new Set(
+      employees
+        .map(employee => (employee.department?.name || '').trim().toLowerCase()) // Chuẩn hóa ngay khi map
+        .filter(name => name) // Lọc bỏ chuỗi rỗng sau khi chuẩn hóa
+    )
+  );
+
+  // Biến statuses không còn cần thiết vì dùng POSSIBLE_STATUSES
 
   if (isLoading) {
     return (
@@ -86,8 +289,13 @@ const Employees: React.FC = () => {
               onChange={(e) => setDepartmentFilter(e.target.value)}
             >
               <option value="">Tất cả phòng ban</option>
-              {departments.map((department, index) => (
-                <option key={index} value={department}>{department}</option>
+              {/* Sửa lỗi: Sử dụng tên department (string) cho value và nội dung */}
+              {/* Hiển thị tên phòng ban đã chuẩn hóa (có thể viết hoa chữ cái đầu nếu muốn) */}
+              {departments.map((deptName, index) => (
+                <option key={index} value={deptName}>
+                  {/* Viết hoa chữ cái đầu tiên của mỗi từ cho đẹp hơn */}
+                  {deptName.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                </option>
               ))}
             </select>
             
@@ -97,12 +305,18 @@ const Employees: React.FC = () => {
               onChange={(e) => setStatusFilter(e.target.value)}
             >
               <option value="">Tất cả trạng thái</option>
-              {statuses.map((status, index) => (
+              {/* Sử dụng mảng trạng thái cố định */}
+              {/* Thêm kiểu dữ liệu cho status và index */}
+              {POSSIBLE_STATUSES.map((status: string, index: number) => (
                 <option key={index} value={status}>{status}</option>
               ))}
             </select>
             
-            <button className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-none">
+            {/* Thêm onClick để mở modal */}
+            <button
+              className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 focus:outline-none"
+              onClick={() => setIsAddModalOpen(true)}
+            >
               <i className="fas fa-plus mr-2"></i>Thêm nhân viên
             </button>
           </div>
@@ -121,60 +335,69 @@ const Employees: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredEmployees.map(employee => (
+              {/* Sử dụng currentEmployees thay vì filteredEmployees */}
+              {currentEmployees.map(employee => (
                 <tr key={employee.id} className="bg-white border-b hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
-                        <img className="h-10 w-10 rounded-full" src={employee.avatar} alt={employee.name} />
+                        {/* Đổi alt={employee.name} thành alt={employee.fullName} */}
+                        {/* Sửa lỗi: Cung cấp giá trị mặc định cho src nếu avatar là null */}
+                        <img className="h-10 w-10 rounded-full" src={employee.avatar || ''} alt={employee.fullName} />
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{employee.name}</div>
+                         {/* Đổi {employee.name} thành {employee.fullName} */}
+                        <div className="text-sm font-medium text-gray-900">{employee.fullName}</div>
                         <div className="text-sm text-gray-500">{employee.email}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">{employee.position}</div>
-                    <div className="text-xs text-gray-500">{employee.department}</div>
+                    {/* Sửa lỗi: Hiển thị title của position, xử lý null */}
+                    <div className="text-sm text-gray-900">{employee.position?.title || 'N/A'}</div>
+                    {/* Sửa lỗi: Hiển thị name của department, xử lý null */}
+                    <div className="text-xs text-gray-500">{employee.department?.name || 'N/A'}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">{employee.joinDate}</div>
+                     {/* Đổi {employee.joinDate} thành {employee.hireDate} */}
+                    <div className="text-sm text-gray-900">{employee.hireDate}</div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">{employee.phone}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      employee.status === 'Chính thức' 
-                        ? 'bg-blue-100 text-blue-800' 
-                        : employee.status === 'Đang thử việc'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
+                    {/* Hiển thị trạng thái dựa trên isActive */}
+                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      employee.isActive
+                        ? 'bg-green-100 text-green-800' // Đang làm việc
+                        : 'bg-red-100 text-red-800'     // Đã nghỉ việc
                     }`}>
-                      {employee.status}
+                      {employee.isActive ? 'Đang làm việc' : 'Đã nghỉ việc'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex space-x-2">
                       <button 
-                        className="text-blue-600 hover:text-blue-900" 
+                        className="text-blue-600 hover:text-blue-900"
                         title="Xem chi tiết"
-                        onClick={() => {/* TODO: Implement view details */}}
+                        // Gọi handleOpenViewModal với employee tương ứng
+                        onClick={() => handleOpenViewModal(employee)}
                       >
                         <i className="fas fa-eye"></i>
                       </button>
                       <button 
-                        className="text-gray-600 hover:text-gray-900" 
+                        className="text-gray-600 hover:text-gray-900"
                         title="Sửa"
-                        onClick={() => {/* TODO: Implement edit */}}
+                        // Gọi handleOpenEditModal với employee tương ứng
+                        onClick={() => handleOpenEditModal(employee)}
                       >
                         <i className="fas fa-edit"></i>
                       </button>
                       <button 
-                        className="text-red-600 hover:text-red-900" 
+                        className="text-red-600 hover:text-red-900"
                         title="Xóa"
-                        onClick={() => {/* TODO: Implement delete */}}
+                        // Gọi handleDelete với id và fullName của nhân viên
+                        onClick={() => handleDelete(employee.id, employee.fullName)}
                       >
                         <i className="fas fa-trash-alt"></i>
                       </button>
@@ -188,26 +411,70 @@ const Employees: React.FC = () => {
         
         <div className="flex items-center justify-between mt-6">
           <div className="text-sm text-gray-700">
-            Hiển thị <span className="font-medium">1</span> đến <span className="font-medium">{filteredEmployees.length}</span> trong tổng số <span className="font-medium">{employees.length}</span> nhân viên
+            {/* Cập nhật hiển thị số lượng */}
+            Hiển thị <span className="font-medium">{filteredEmployees.length > 0 ? startIndex + 1 : 0}</span> đến <span className="font-medium">{Math.min(endIndex, filteredEmployees.length)}</span> trong tổng số <span className="font-medium">{filteredEmployees.length}</span> nhân viên (Tổng: {employees.length})
           </div>
-          <div>
-            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-              <button className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
-                <span className="sr-only">Previous</span>
-                <i className="fas fa-chevron-left h-5 w-5"></i>
-              </button>
-              <button aria-current="page" className="relative z-10 inline-flex items-center bg-blue-600 px-4 py-2 text-sm font-semibold text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">1</button>
-              <button className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">2</button>
-              <button className="relative hidden items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 md:inline-flex">3</button>
-              <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">...</span>
-              <button className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
-                <span className="sr-only">Next</span>
-                <i className="fas fa-chevron-right h-5 w-5"></i>
-              </button>
-            </nav>
-          </div>
+          {/* Render các nút phân trang động */}
+          {totalPages > 1 && (
+             <div>
+               <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                 {renderPaginationButtons()}
+               </nav>
+             </div>
+          )}
         </div>
       </div>
+
+      {/* Hiển thị modal nếu isAddModalOpen là true */}
+      {isAddModalOpen && (
+        <CreateEmployeeModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onSuccess={handleAddEmployeeSuccess}
+        />
+      )}
+
+      {/* Hiển thị modal sửa nếu isEditModalOpen là true */}
+      {isEditModalOpen && editingEmployee && (
+        <EditEmployeeModal
+          isOpen={isEditModalOpen}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setEditingEmployee(null); // Đảm bảo xóa dữ liệu khi đóng
+          }}
+          onSuccess={handleEditSuccess}
+          employeeData={editingEmployee} // Truyền dữ liệu nhân viên đang sửa
+        />
+      )}
+
+      {/* Hiển thị modal xem chi tiết nếu isViewModalOpen là true */}
+      {isViewModalOpen && viewingEmployee && (
+        <ViewEmployeeModal
+          isOpen={isViewModalOpen}
+          onClose={() => {
+            setIsViewModalOpen(false);
+            setViewingEmployee(null); // Đảm bảo xóa dữ liệu khi đóng
+          }}
+          employeeData={viewingEmployee}
+        />
+      )}
+
+      {/* Hiển thị modal xác nhận xóa */}
+      {isDeleteModalOpen && deletingEmployeeInfo && (
+        <ConfirmDeleteModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => {
+            if (!isDeleting) { // Chỉ cho phép đóng nếu không đang xóa
+              setIsDeleteModalOpen(false);
+              setDeletingEmployeeInfo(null);
+            }
+          }}
+          onConfirm={executeDelete}
+          itemName={deletingEmployeeInfo.name}
+          itemType="nhân viên"
+          isLoading={isDeleting} // Truyền trạng thái loading
+        />
+      )}
     </div>
   );
 };

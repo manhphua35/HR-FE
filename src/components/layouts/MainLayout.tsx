@@ -70,9 +70,9 @@ const MainLayout: React.FC = () => {
     }
   ];
 
-  // Filter navigation items based on user role
-  const filteredNavItems = navigationItems.filter(item => 
-    currentUser && item.allowedRoles.includes(currentUser.role)
+  // Filter navigation items based on user roleType
+  const filteredNavItems = navigationItems.filter(item =>
+    currentUser && currentUser.role && item.allowedRoles.includes(currentUser.role.roleType) // Access nested role.roleType
   );
 
   return (
@@ -180,15 +180,15 @@ const MainLayout: React.FC = () => {
                   <>
                     <div className="flex flex-col items-end mr-3">
                       <span className="text-sm font-semibold text-gray-700">
-                        {currentUser.name}
+                        {currentUser.fullName} {/* Use fullName */}
                       </span>
                       <span className="text-xs text-gray-500 capitalize">
-                        {currentUser.role.replace('_', ' ')}
+                        {currentUser.role?.roleType.replace('_', ' ') || 'N/A'} {/* Safely access nested role.roleType */}
                       </span>
                     </div>
                     <button className="relative w-8 h-8 overflow-hidden rounded-full">
                       <img
-                        src={`https://ui-avatars.com/api/?name=${currentUser.name}&background=0D8ABC&color=fff`}
+                        src={`https://ui-avatars.com/api/?name=${currentUser.fullName}&background=0D8ABC&color=fff`}
                         alt="avatar"
                         className="object-cover w-full h-full"
                       />

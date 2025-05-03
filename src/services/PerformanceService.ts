@@ -67,5 +67,19 @@ export const PerformanceService = {
       }
     );
     return response.data.data;
+  },
+
+  // Get overall plans (for Admin/HR) - Assumes endpoint returns PerformancePlan[]
+  getOverallPlans: async (): Promise<PerformancePlan[]> => {
+    const response = await axios.get<ApiResponse<PerformancePlan[]>>(
+      `${API_URL}/performance/overall`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+        }
+      }
+    );
+    // Assuming the overall endpoint also returns data in response.data.data
+    return response.data.data;
   }
 };

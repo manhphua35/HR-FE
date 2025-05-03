@@ -1,32 +1,54 @@
 import React, { useEffect, useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext'; // Import useAuth
 import { DashboardService } from '../../services/DashboardService';
 
 const HrManagerDashboard: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
   const [activities, setActivities] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [componentLoading, setComponentLoading] = useState(true); // Renamed
   const [error, setError] = useState<string | null>(null);
+  const { isAuthenticated, currentUser, loading: authLoading } = useAuth(); // Get auth state + loading
 
+  // Add authLoading, isAuthenticated, currentUser to dependency array
   useEffect(() => {
     const fetchData = async () => {
+       // Wait for auth context to finish loading first
+       if (authLoading) {
+         setComponentLoading(true);
+         return;
+       }
+
+       // Now check authentication
+       if (!isAuthenticated) {
+        setError("Not authenticated");
+        setComponentLoading(false);
+        return;
+      }
+      // Optional: Add role check if needed
+      // if (!currentUser || currentUser.role !== 'HR_MANAGER') { ... }
+
+      setComponentLoading(true); // Start component loading for data fetch
+      setError(null); // Clear previous errors
+
       try {
-        const [statsData, activitiesData] = await Promise.all([
-          DashboardService.getHrStats(),
-          DashboardService.getRecentActivities()
-        ]);
+        // Fetch only the HR stats data now
+        const statsData = await DashboardService.getHrStats();
+        // Assuming statsData contains all necessary info.
+        // If activities are needed and provided differently, adjust here.
         setStats(statsData);
-        setActivities(activitiesData);
-        setLoading(false);
+        // setActivities([]); // Clear or handle activities based on API response
+        setComponentLoading(false);
       } catch (err) {
         setError('Failed to fetch dashboard data');
-        setLoading(false);
+        setComponentLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [isAuthenticated, currentUser]); // Ensure dependencies are correct
 
-  if (loading) return <div className="p-4">Loading...</div>;
+  // Show loading indicator while auth context is loading OR component is fetching data
+  if (authLoading || componentLoading) return <div className="p-4">Loading...</div>;
   if (error) return <div className="p-4 text-red-500">{error}</div>;
   if (!stats) return <div className="p-4">No data available</div>;
 
@@ -136,22 +158,17 @@ const HrManagerDashboard: React.FC = () => {
           </div>
           <div className="p-6">
             <div className="space-y-4">
-              {activities.map((activity) => (
+              {/* TODO: Update this section based on how/if activities are returned by the getHrStats API */}
+              {/* Placeholder if no activities data is available */}
+              {(!stats || !stats.activities || stats.activities.length === 0) && (
+                 <div className="p-4 text-gray-500">No recent updates available.</div>
+              )}
+              {/* Example: Assuming statsData might have an 'activities' array */}
+              {/* {stats?.activities?.map((activity: any) => (
                 <div key={activity.id} className="flex items-start">
-                  <div className="flex-shrink-0">
-                    <div className={`w-8 h-8 rounded-full bg-${activity.type}-500 flex items-center justify-center text-white`}>
-                      <i className={`fas fa-${getActivityIcon(activity.type)} text-sm`}></i>
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-900">{activity.title}</p>
-                    <p className="text-sm text-gray-500">{activity.description}</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {new Date(activity.timestamp).toLocaleString()}
-                    </p>
-                  </div>
+                  ... render activity ...
                 </div>
-              ))}
+              ))} */}
             </div>
           </div>
         </div>
