@@ -17,7 +17,7 @@ const formatDateForAPI = (dateStr: string): string => {
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   } catch (e) {
     console.error("Error formatting date for API:", e);
-    return ''; // Return empty string or handle error as appropriate
+    return ''; // Trả về chuỗi rỗng hoặc xử lý lỗi thích hợp
   }
 };
 
@@ -28,7 +28,7 @@ const Attendance: React.FC = () => {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("");
-  
+
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   // Summary state removed as the API endpoint was removed
   // const [summary, setSummary] = useState<AttendanceSummary | null>(null);
@@ -42,7 +42,7 @@ const Attendance: React.FC = () => {
   const fetchAttendanceData = async () => {
     const apiDate = formatDateForAPI(formatDate(currentDate));
     if (!apiDate) {
-      setError("Invalid date format selected.");
+      setError("Định dạng ngày đã chọn không hợp lệ.");
       setLoading(false);
       return;
     }
@@ -52,15 +52,15 @@ const Attendance: React.FC = () => {
       // Fetch only records, summary endpoint removed
       const recordsData = await AttendanceService.getAttendances({
         startDate: apiDate,
-        endDate: apiDate // Assuming filtering by a single day
+        endDate: apiDate // Giả sử lọc theo một ngày duy nhất
       });
-      // Đảm bảo recordsData là một mảng trước khi cập nhật state
+      // Đảm bảo recordsData luôn là một mảng, ngay cả khi API trả về null/undefined
       setRecords(Array.isArray(recordsData) ? recordsData : []);
-      // setSummary removed
+      // setSummary đã bị xóa
       setError("");
     } catch (err) {
-      setError("Failed to fetch attendance data");
-      setRecords([]); // Đặt thành mảng rỗng khi có lỗi
+      setError("Lấy dữ liệu chấm công thất bại");
+      setRecords([]); // Luôn đặt thành mảng rỗng khi có lỗi
       console.error(err);
     } finally {
       setLoading(false);
@@ -84,16 +84,16 @@ const Attendance: React.FC = () => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (err) {
-      setError("Failed to export report");
+      setError("Xuất báo cáo thất bại");
       console.error(err);
     }
   };
   */
 
-  // Filter records - Sử dụng cấu trúc user lồng vào
-  const filteredRecords = records.filter(record => {
-    // Kiểm tra null/undefined cho user và các thuộc tính của nó
-    const employeeName = record.user?.fullName || '';
+  // Filter records - Use default empty array to ensure safety
+  const filteredRecords = (records || []).filter(record => { // Changed: Use (records || [])
+        // Kiểm tra null/undefined cho user và các thuộc tính của nó
+        const employeeName = record.user?.fullName || '';
     const departmentName = record.user?.department?.name || '';
     const recordStatus = record.status || '';
 
@@ -101,13 +101,13 @@ const Attendance: React.FC = () => {
     const matchesStatus = statusFilter === "" || recordStatus.toLowerCase() === statusFilter.toLowerCase();
     const matchesDepartment = departmentFilter === "" || departmentName.toLowerCase() === departmentFilter.toLowerCase();
 
-    return matchesSearch && matchesStatus && matchesDepartment;
-  });
+        return matchesSearch && matchesStatus && matchesDepartment;
+      }); // Removed the erroneous `: [];`
 
   // Get unique departments for filter dropdown - Sử dụng cấu trúc user lồng vào
   const departments = Array.from(
     new Set(
-      records
+      (records || []) // Changed: Use (records || [])
         .map(record => record.user?.department?.name) // Lấy tên phòng ban từ user.department
         .filter((name): name is string => !!name) // Lọc bỏ các giá trị null/undefined và đảm bảo kiểu string
     )
@@ -116,7 +116,7 @@ const Attendance: React.FC = () => {
   // Get unique statuses for filter dropdown - Handle undefined/null
   const statuses = Array.from(
     new Set(
-        records
+        (records || []) // Changed: Use (records || [])
         .map(record => record.status) // Lấy trạng thái
         .filter((status): status is string => !!status) // Lọc bỏ các giá trị null/undefined
     )
@@ -150,7 +150,7 @@ const Attendance: React.FC = () => {
 
 
   if (loading) {
-    return <div className="p-6">Loading...</div>;
+    return <div className="p-6">Đang tải...</div>;
   }
 
   if (error) {
@@ -162,13 +162,13 @@ const Attendance: React.FC = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">Chấm công</h1>
       </div>
-      
+
       {/* Attendance Records Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-800">Dữ liệu chấm công</h2>
         </div>
-        
+
         <div className="p-6">
           <div className="flex flex-col lg:flex-row gap-4 justify-between mb-8">
             <div className="relative w-full lg:w-1/3">
@@ -183,7 +183,7 @@ const Attendance: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -197,7 +197,7 @@ const Attendance: React.FC = () => {
                   onChange={handleDateChange} // Use handler to parse and set Date object
                 />
               </div>
-              
+
               <select
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5"
                 value={departmentFilter}
@@ -208,7 +208,7 @@ const Attendance: React.FC = () => {
                   <option key={index} value={department}>{department}</option>
                 ))}
               </select>
-              
+
               <select
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5"
                 value={statusFilter}
@@ -221,7 +221,7 @@ const Attendance: React.FC = () => {
               </select>
             </div>
           </div>
-          
+
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left text-gray-500">
               <thead className="text-xs text-gray-700 uppercase bg-gray-50">
@@ -279,9 +279,9 @@ const Attendance: React.FC = () => {
                           ? 'bg-green-100 text-green-800'
                           : (record.status || '').toLowerCase() === 'đi muộn'
                             ? 'bg-yellow-100 text-yellow-800'
-                            : (record.status || '').toLowerCase() === 'vắng' // Example: Add other statuses if needed
+                            : (record.status || '').toLowerCase() === 'vắng' // Ví dụ: Thêm các trạng thái khác nếu cần
                               ? 'bg-red-100 text-red-800'
-                              : 'bg-gray-100 text-gray-800' // Default/Unknown status
+                              : 'bg-gray-100 text-gray-800' // Trạng thái mặc định/không xác định
                       }`}>
                         {record.status || 'N/A'}
                       </span>
@@ -303,10 +303,10 @@ const Attendance: React.FC = () => {
               </tbody>
             </table>
           </div>
-          
+
           <div className="flex items-center justify-between mt-6">
             <div className="text-sm text-gray-700">
-              Hiển thị <span className="font-medium">1</span> đến <span className="font-medium">{filteredRecords.length}</span> trong tổng số <span className="font-medium">{records.length}</span> bản ghi
+              Hiển thị <span className="font-medium">1</span> đến <span className="font-medium">{filteredRecords.length}</span> trong tổng số <span className="font-medium">{(records || []).length}</span> bản ghi
             </div>
             <div>
               <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">

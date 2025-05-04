@@ -29,13 +29,13 @@ const Reports: React.FC = () => {
       fetchReportData();
     } else {
       setLoading(false); // Stop loading if no user
-      setError("User data not available.");
+      setError("Dữ liệu người dùng không có sẵn.");
     }
   }, [startDate, endDate, currentUser]); // Re-fetch when dates or user change
 
   const fetchReportData = async () => {
     if (!currentUser?.role?.roleType) {
-      setError("User role not defined.");
+      setError("Vai trò người dùng chưa được xác định.");
       setLoading(false);
       return;
     }
@@ -70,8 +70,8 @@ const Reports: React.FC = () => {
                  ReportService.getDepartmentReports(currentUser.departmentId, deptParams) // Use deptParams
                      .then(data => setDepartmentReports(data))
                      .catch(err => {
-                         console.error("Failed to fetch department reports:", err);
-                         setError(prev => prev + "\nFailed to fetch department reports.");
+                         console.error("Lấy báo cáo phòng ban thất bại:", err);
+                         setError(prev => prev + "\nLấy báo cáo phòng ban thất bại.");
                      })
              );
          }
@@ -84,8 +84,8 @@ const Reports: React.FC = () => {
           ReportService.getHRCostStatistics(hrCostParams) // Use hrCostParams
             .then(data => setHrCostStats(data))
             .catch(err => {
-              console.error("Failed to fetch HR cost statistics:", err);
-              setError(prev => prev + "\nFailed to fetch HR cost statistics.");
+              console.error("Lấy thống kê chi phí nhân sự thất bại:", err);
+              setError(prev => prev + "\nLấy thống kê chi phí nhân sự thất bại.");
             })
         );
       }
@@ -100,8 +100,8 @@ const Reports: React.FC = () => {
              ReportService.getDashboardData(dashboardParams) // Use dashboardParams (already contains month, year, and potentially deptId)
                  .then(data => setDashboardData(data))
                  .catch(err => {
-                     console.error("Failed to fetch dashboard data:", err);
-                     setError(prev => prev + "\nFailed to fetch dashboard data.");
+                     console.error("Lấy dữ liệu bảng điều khiển thất bại:", err);
+                     setError(prev => prev + "\nLấy dữ liệu bảng điều khiển thất bại.");
                  })
          );
       }
@@ -110,7 +110,7 @@ const Reports: React.FC = () => {
 
     } catch (err) {
       // Catch errors not caught by individual promises (e.g., setup errors)
-      setError('An unexpected error occurred while fetching report data.');
+      setError('Đã xảy ra lỗi không mong muốn khi lấy dữ liệu báo cáo.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -127,7 +127,7 @@ const Reports: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Reports</h2>
+        <h2 className="text-2xl font-bold">Báo cáo</h2>
         <div className="flex space-x-4">
           <input
             type="date"
@@ -157,7 +157,7 @@ const Reports: React.FC = () => {
       {/* Removed Tabs */}
 
       {loading ? (
-        <div className="p-6 text-center">Loading report data...</div>
+        <div className="p-6 text-center">Đang tải dữ liệu báo cáo...</div>
       ) : error ? (
         <div className="p-6 text-red-500 whitespace-pre-line">{error}</div>
       ) : (
@@ -165,7 +165,7 @@ const Reports: React.FC = () => {
           {/* Display HR Cost Statistics (HR/Admin only) */}
           {isHrOrAdmin && hrCostStats && (
             <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-              <h3 className="text-xl font-semibold mb-4">HR Cost Statistics</h3>
+              <h3 className="text-xl font-semibold mb-4">Thống kê chi phí nhân sự</h3>
               {/* Render hrCostStats data - using JSON.stringify as placeholder */}
               <pre className="bg-gray-100 p-4 rounded text-sm overflow-x-auto">
                 {JSON.stringify(hrCostStats, null, 2)}
@@ -176,7 +176,7 @@ const Reports: React.FC = () => {
           {/* Display Department Reports (Dept Head sees their own) */}
           {isDeptHead && departmentReports && (
              <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-               <h3 className="text-xl font-semibold mb-4">Department Reports (Your Department)</h3>
+               <h3 className="text-xl font-semibold mb-4">Báo cáo phòng ban (Phòng ban của bạn)</h3>
                {/* Render departmentReports data - using JSON.stringify as placeholder */}
                <pre className="bg-gray-100 p-4 rounded text-sm overflow-x-auto">
                  {JSON.stringify(departmentReports, null, 2)}
@@ -189,7 +189,7 @@ const Reports: React.FC = () => {
           {/* Display Dashboard Data (HR/Admin/Dept Head) */}
           {(isHrOrAdmin || isDeptHead) && dashboardData && (
             <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-              <h3 className="text-xl font-semibold mb-4">Dashboard Data</h3>
+              <h3 className="text-xl font-semibold mb-4">Dữ liệu bảng điều khiển</h3>
               {/* Render dashboardData - using JSON.stringify as placeholder */}
               <pre className="bg-gray-100 p-4 rounded text-sm overflow-x-auto">
                 {JSON.stringify(dashboardData, null, 2)}
@@ -199,7 +199,7 @@ const Reports: React.FC = () => {
 
           {/* Message if no relevant reports are available for the user */}
           {!loading && !error && !hrCostStats && !departmentReports && !dashboardData && (
-             <div className="p-6 text-center text-gray-500">No reports available for your role or selected period.</div>
+             <div className="p-6 text-center text-gray-500">Không có báo cáo nào cho vai trò của bạn hoặc khoảng thời gian đã chọn.</div>
           )}
         </div>
       )}

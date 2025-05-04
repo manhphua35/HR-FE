@@ -48,7 +48,7 @@ const Employees: React.FC = () => {
       setEmployees(data);
       setError("");
     } catch (err) {
-      setError("Failed to fetch employees");
+      setError("Lấy danh sách nhân viên thất bại");
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -85,7 +85,7 @@ const Employees: React.FC = () => {
 
     // Ghi log để kiểm tra (có thể xóa sau khi debug xong)
     // if (filterStatus !== "") {
-    //    console.log(`Filtering by status: Filter='${filterStatus}', Employee Active='${employee.isActive}', Match=${matchesStatus}`);
+    //    
     // }
 
 
@@ -139,7 +139,7 @@ const Employees: React.FC = () => {
         disabled={currentPage === 1}
         className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <span className="sr-only">Previous</span>
+        <span className="sr-only">Trước</span>
         <i className="fas fa-chevron-left h-5 w-5"></i>
       </button>
     );
@@ -194,7 +194,7 @@ const Employees: React.FC = () => {
         disabled={currentPage === totalPages || totalPages === 0}
         className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <span className="sr-only">Next</span>
+        <span className="sr-only">Sau</span>
         <i className="fas fa-chevron-right h-5 w-5"></i>
       </button>
     );
@@ -259,7 +259,7 @@ const Employees: React.FC = () => {
   if (error) {
     return (
       <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-        <strong className="font-bold">Error!</strong>
+        <strong className="font-bold">Lỗi!</strong>
         <span className="block sm:inline"> {error}</span>
       </div>
     );
@@ -342,8 +342,8 @@ const Employees: React.FC = () => {
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
                         {/* Đổi alt={employee.name} thành alt={employee.fullName} */}
-                        {/* Sửa lỗi: Cung cấp giá trị mặc định cho src nếu avatar là null */}
-                        <img className="h-10 w-10 rounded-full" src={employee.avatar || ''} alt={employee.fullName} />
+                        {/* Sử dụng logo192.png làm ảnh đại diện mặc định */}
+                        <img className="h-10 w-10 rounded-full object-cover" src={employee.avatar || '/logo192.png'} alt={employee.fullName} />
                       </div>
                       <div className="ml-4">
                          {/* Đổi {employee.name} thành {employee.fullName} */}

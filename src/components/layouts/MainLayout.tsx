@@ -14,9 +14,9 @@ const MainLayout: React.FC = () => {
 
   // Define navigation items with role-based access
   const navigationItems = [
-    { 
-      name: 'Dashboard', 
-      path: '/dashboard', 
+    {
+      name: 'Trang chủ', // Đổi thành Trang chủ
+      path: '/dashboard',
       icon: 'fas fa-tachometer-alt',
       allowedRoles: ['admin', 'hr_manager', 'department_manager', 'employee']
     },
@@ -93,7 +93,7 @@ const MainLayout: React.FC = () => {
       >
         <div className="flex items-center justify-center mt-8">
           <div className="flex items-center">
-            <span className="mx-2 text-2xl font-semibold text-blue-600">HR Dashboard</span>
+            <span className="mx-2 text-2xl font-semibold text-blue-600">HR Trang chủ</span>
           </div>
         </div>
 

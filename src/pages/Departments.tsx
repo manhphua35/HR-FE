@@ -22,7 +22,7 @@ const Departments: React.FC = () => {
       setSummary(summaryData);
       setError("");
     } catch (err) {
-      setError("Failed to fetch departments data");
+      setError("Lấy dữ liệu phòng ban thất bại");
       console.error(err);
     } finally {
       setLoading(false);
@@ -30,7 +30,7 @@ const Departments: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="p-6">Loading...</div>;
+    return <div className="p-6">Đang tải...</div>;
   }
 
   if (error) {
@@ -42,7 +42,7 @@ const Departments: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <h3 className="text-lg font-semibold text-gray-700">Departments</h3>
         <button className="mt-3 md:mt-0 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50">
-          + Add Department
+          + Thêm phòng ban
         </button>
       </div>
 
@@ -98,7 +98,7 @@ const Departments: React.FC = () => {
               </div>
               <div className="mt-4 pt-4 border-t border-gray-100 flex space-x-2">
                 <button className="flex-1 px-3 py-1.5 bg-primary-light text-primary font-medium rounded hover:bg-primary hover:text-white transition-colors duration-200">
-                  View Details
+                  Xem chi tiết
                 </button>
               </div>
             </div>

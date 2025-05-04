@@ -48,7 +48,7 @@ const LeavePage: React.FC = () => {
       
       setError("");
     } catch (err) {
-      setError("Failed to fetch leave data");
+      setError("Lấy dữ liệu nghỉ phép thất bại");
       console.error(err);
     } finally {
       setLoading(false);
@@ -77,7 +77,7 @@ const LeavePage: React.FC = () => {
       setIsCreateModalOpen(false);
       fetchLeaveData();
     } catch (err) {
-      setError("Failed to create leave request");
+      setError("Tạo yêu cầu nghỉ phép thất bại");
       console.error(err);
     }
   };
@@ -87,7 +87,7 @@ const LeavePage: React.FC = () => {
       await LeaveService.approveLeaveRequest(id);
       fetchLeaveData();
     } catch (err) {
-      setError("Failed to approve leave request");
+      setError("Phê duyệt yêu cầu nghỉ phép thất bại");
       console.error(err);
     }
   };
@@ -107,13 +107,13 @@ const LeavePage: React.FC = () => {
       setSelectedLeaveId(null);
       fetchLeaveData();
     } catch (err) {
-      setError("Failed to reject leave request");
+      setError("Từ chối yêu cầu nghỉ phép thất bại");
       console.error(err);
     }
   };
 
   if (loading) {
-    return <div className="p-6">Loading...</div>;
+    return <div className="p-6">Đang tải...</div>;
   }
 
   if (error) {
@@ -252,7 +252,7 @@ const LeavePage: React.FC = () => {
                   setSelectedLeaveId(null);
                 }}
               >
-                Cancel
+                Hủy
               </button>
               <button
                 className="px-4 py-2 bg-red-600 text-white rounded-md disabled:bg-red-300"

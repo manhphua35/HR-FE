@@ -38,7 +38,7 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-800 mb-5">
-        {department || 'Department'} Manager Dashboard
+        Trang chủ Quản lý {department || 'Phòng ban'} 
       </h2>
       
       {/* Stats Cards */}

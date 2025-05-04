@@ -73,9 +73,9 @@ const Payroll: React.FC = () => { // Changed component name to match export
           if (detailErr.isAxiosError && detailErr.response?.status === 404) {
             // No detail data for employee, which is fine
             setPayrollDetail(null);
-            setError(`No payroll record found for you for ${monthStr}/${yearStr}.`); // Inform user
+            setError(`Không tìm thấy bản ghi lương cho bạn trong tháng ${monthStr}/${yearStr}.`); // Inform user
           } else {
-             setError("Failed to fetch your payroll details.");
+             setError("Lấy chi tiết lương của bạn thất bại.");
              console.error("Fetch Payroll Detail Error:", detailErr);
              setPayrollDetail(null); // Ensure detail is null on other errors
           }
@@ -89,7 +89,7 @@ const Payroll: React.FC = () => { // Changed component name to match export
          // setError("Payroll list view is currently unavailable.");
       }
     } catch (err: any) { // Catch any unexpected errors during setup (like date parsing)
-      setError("An unexpected error occurred while preparing to fetch payroll data.");
+      setError("Đã xảy ra lỗi không mong muốn khi chuẩn bị lấy dữ liệu lương.");
       console.error("Payroll Data Prep Error:", err);
       setPayrollItems([]);
       setPayrollDetail(null);
@@ -110,7 +110,7 @@ const Payroll: React.FC = () => { // Changed component name to match export
       await PayrollService.calculateMonthlyPayroll(data);
       fetchPayrollData(); // Refresh data after calculation
     } catch (err) {
-      setError('Failed to calculate payroll');
+      setError('Tính lương thất bại');
       console.error(err);
     }
   };
@@ -124,7 +124,7 @@ const Payroll: React.FC = () => { // Changed component name to match export
       setSelectedItems([]); // Clear selection after action
       fetchPayrollData(); // Refresh data
     } catch (err) {
-      setError('Failed to approve selected payroll items');
+      setError('Phê duyệt các mục lương đã chọn thất bại');
       console.error(err);
     }
   };
@@ -137,7 +137,7 @@ const Payroll: React.FC = () => { // Changed component name to match export
       setSelectedItems([]); // Clear selection after action
       fetchPayrollData(); // Refresh data
     } catch (err) {
-      setError('Failed to process payments for selected items');
+      setError('Xử lý thanh toán cho các mục đã chọn thất bại');
       console.error(err);
     }
   };
@@ -174,14 +174,14 @@ const Payroll: React.FC = () => { // Changed component name to match export
       await PayrollService.finalizeMonthlyPayroll(payrollId);
       fetchPayrollData(); // Refresh data
     } catch (err) {
-      setError('Failed to finalize payroll');
+      setError('Hoàn tất bảng lương thất bại');
       console.error(err);
     }
   };
 
 
   if (loading) {
-    return <div className="p-6">Loading...</div>;
+    return <div className="p-6">Đang tải...</div>;
   }
 
   // Show error only if it's a real error, not just missing data
@@ -219,7 +219,7 @@ const Payroll: React.FC = () => { // Changed component name to match export
 
       {/* --- Conditional Rendering based on Role --- */}
 
-      {/* View for Employee */}
+      {/* Xem cho Nhân viên */}
       {isEmployee && (
         <div className="bg-white rounded-lg shadow-sm overflow-hidden p-6">
           <h3 className="text-lg font-semibold mb-4">My Payroll Details for {selectedMonth}</h3>
@@ -269,7 +269,7 @@ const Payroll: React.FC = () => { // Changed component name to match export
         </div>
       )}
 
-      {/* View for Manager/HR/Admin */}
+      {/* Xem cho Quản lý/HR/Admin */}
       {(isManager || isAdminOrHR) && (
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
@@ -325,7 +325,7 @@ const Payroll: React.FC = () => { // Changed component name to match export
                               Finalize
                             </button>
                           )}
-                          {/* Add other actions like 'View Detail' if needed */}
+                          {/* Thêm các hành động khác như 'Xem chi tiết' nếu cần */}
                         </td>
                       )}
                     </tr>

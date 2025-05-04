@@ -38,7 +38,7 @@ const ProtectedDashboardLayout = () => {
   if (authLoading) {
     console.log('[ProtectedLayout] Auth is loading, showing loading indicator.'); // Log khi đang loading
     // You might want a more sophisticated loading spinner here
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return <div className="flex justify-center items-center h-screen">Đang tải...</div>;
   }
 
   // After loading, check authentication
@@ -134,7 +134,7 @@ const AppRoutes = () => {
             element={
               authLoading ? (
                 // Show loading indicator while auth context is resolving
-                <div className="p-4">Checking permissions...</div>
+                <div className="p-4">Đang kiểm tra quyền...</div>
               ) : isAuthenticated ? ( // Primary check: Is the user authenticated?
                 // If authenticated, THEN check role
                 currentUser && currentUser.role && route.allowedRoles.includes(currentUser.role.roleType) ? ( // Access nested role.roleType
@@ -148,7 +148,7 @@ const AppRoutes = () => {
                 ) : (
                   // Authenticated is true, but currentUser is momentarily null (state update pending?)
                   // Show a brief message or redirect to unauthorized as a safeguard
-                  <div className="p-4">Finalizing session...</div>
+                  <div className="p-4">Đang hoàn tất phiên...</div>
                   // <Navigate to="/unauthorized" replace /> // Alternative: redirect immediately
                 )
               ) : (

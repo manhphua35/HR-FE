@@ -19,70 +19,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const checkAuth = async () => {
-      console.log('[AuthContext] Starting checkAuth...');
-      setLoading(true); // Start loading
+      console.log('[AuthContext] Bắt đầu checkAuth...');
+      setLoading(true); // Bắt đầu tải
 
       const token = localStorage.getItem('accessToken');
-      console.log('[AuthContext] Initial accessToken:', token ? token.substring(0, 10) + '...' : 'None');
+      console.log('[AuthContext] accessToken ban đầu:', token ? token.substring(0, 10) + '...' : 'Không có');
 
       let finalUser: User | null = null;
       let finalIsAuthenticated = false;
 
       if (token) {
         try {
-          console.log('[AuthContext] Attempting initial profile/me...');
+          console.log('[AuthContext] Đang thử lấy profile/me ban đầu...');
           const user = await AuthService.getCurrentUser();
-          console.log('[AuthContext] Initial profile/me SUCCESS:', user);
+          console.log('[AuthContext] Lấy profile/me ban đầu THÀNH CÔNG:', user);
           finalUser = user;
           finalIsAuthenticated = true;
         } catch (error: any) {
-          console.error('[AuthContext] Initial profile/me FAILED:', error);
+          console.error('[AuthContext] Lấy profile/me ban đầu THẤT BẠI:', error);
           if (error.response?.status === 401) {
-            console.log('[AuthContext] Token expired (401), attempting refresh...');
+            console.log('[AuthContext] Token hết hạn (401), đang thử làm mới...');
             const refreshToken = localStorage.getItem('refreshToken');
-            console.log('[AuthContext] Refresh token found:', refreshToken ? refreshToken.substring(0, 10) + '...' : 'None');
+            console.log('[AuthContext] Tìm thấy refresh token:', refreshToken ? refreshToken.substring(0, 10) + '...' : 'Không có');
             if (refreshToken) {
               try {
-                console.log('[AuthContext] Calling AuthService.refreshToken...');
-                // Assuming refreshToken() is handled by axios interceptor or handles API call itself
-                const refreshResponse = await AuthService.refreshToken(); // Ensure this exists and works
-                console.log('[AuthContext] Refresh SUCCESS:', refreshResponse);
+                console.log('[AuthContext] Đang gọi AuthService.refreshToken...');
+                // Giả sử refreshToken() được xử lý bởi axios interceptor hoặc tự xử lý gọi API
+                const refreshResponse = await AuthService.refreshToken(); // Đảm bảo hàm này tồn tại và hoạt động
+                console.log('[AuthContext] Làm mới THÀNH CÔNG:', refreshResponse);
                 localStorage.setItem('accessToken', refreshResponse.accessToken);
 
-                console.log('[AuthContext] Retrying profile/me after refresh...');
-                const user = await AuthService.getCurrentUser(); // Retry fetch with new token
-                console.log('[AuthContext] Retry profile/me SUCCESS:', user);
+                console.log('[AuthContext] Đang thử lại profile/me sau khi làm mới...');
+                const user = await AuthService.getCurrentUser(); // Thử lại fetch với token mới
+                console.log('[AuthContext] Thử lại profile/me THÀNH CÔNG:', user);
                 finalUser = user;
                 finalIsAuthenticated = true;
               } catch (refreshError) {
-                console.error('[AuthContext] Token refresh FAILED:', refreshError);
+                console.error('[AuthContext] Làm mới token THẤT BẠI:', refreshError);
                 localStorage.removeItem('accessToken');
                 localStorage.removeItem('refreshToken');
                 // Keep finalUser = null, finalIsAuthenticated = false
               }
             } else {
-              console.log('[AuthContext] No refresh token found, logging out.');
+              console.log('[AuthContext] Không tìm thấy refresh token, đang đăng xuất.');
               localStorage.removeItem('accessToken');
-              // Keep finalUser = null, finalIsAuthenticated = false
+              // Giữ finalUser = null, finalIsAuthenticated = false
             }
           } else {
-            console.error('[AuthContext] Non-401 error during initial check:', error);
+            console.error('[AuthContext] Lỗi không phải 401 trong quá trình kiểm tra ban đầu:', error);
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
             // Keep finalUser = null, finalIsAuthenticated = false
           }
         }
       } else {
-        console.log('[AuthContext] No initial accessToken found.');
-        // Keep finalUser = null, finalIsAuthenticated = false
+        console.log('[AuthContext] Không tìm thấy accessToken ban đầu.');
+        // Giữ finalUser = null, finalIsAuthenticated = false
       }
 
-      // Update state together AFTER all async operations are resolved
-      console.log('[AuthContext] Setting final state:', { finalIsAuthenticated, finalUser });
+      // Cập nhật state cùng lúc SAU KHI tất cả các hoạt động bất đồng bộ được giải quyết
+      console.log('[AuthContext] Đặt trạng thái cuối cùng:', { finalIsAuthenticated, finalUser });
       setCurrentUser(finalUser);
       setIsAuthenticated(finalIsAuthenticated);
-      setLoading(false); // Set loading false only after final state is determined and set
-      console.log('[AuthContext] checkAuth finished, loading set to false.');
+      setLoading(false); // Đặt loading thành false chỉ sau khi trạng thái cuối cùng được xác định và đặt
+      console.log('[AuthContext] checkAuth đã hoàn thành, loading được đặt thành false.');
     };
 
     checkAuth();
@@ -160,7 +160,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth phải được sử dụng trong một AuthProvider');
   }
   return context;
 };

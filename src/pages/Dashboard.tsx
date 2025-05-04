@@ -11,7 +11,7 @@ const Dashboard: React.FC = () => {
   const { currentUser } = useAuth();
   
   if (!currentUser) {
-    return <div className="p-6 text-center">Please log in to view your dashboard.</div>;
+    return <div className="p-6 text-center">Vui lòng đăng nhập để xem bảng điều khiển của bạn.</div>;
   }
 
   // Render appropriate dashboard based on user roleType
@@ -26,7 +26,7 @@ const Dashboard: React.FC = () => {
     case 'EMPLOYEE': // Use backend role names
       return <EmployeeDashboard userId={currentUser.id.toString()} />;
     default:
-      return <div className="p-6 text-center">Invalid user role: {currentUser.role?.roleType || 'undefined'}</div>; // Safely access nested role.roleType
+      return <div className="p-6 text-center">Vai trò người dùng không hợp lệ: {currentUser.role?.roleType || 'không xác định'}</div>; // Safely access nested role.roleType
   }
 };
 

@@ -36,7 +36,7 @@ const Performance: React.FC = () => {
       setPlans(data);
       setLoading(false);
     } catch (err) {
-      setError('Failed to fetch performance plans');
+      setError('Lấy kế hoạch hiệu suất thất bại');
       setLoading(false);
     }
   };
@@ -46,7 +46,7 @@ const Performance: React.FC = () => {
       const data = await PerformanceService.getReviews(planId);
       setReviews(data);
     } catch (err) {
-      setError('Failed to fetch reviews');
+      setError('Lấy đánh giá thất bại');
     }
   };
 
@@ -56,7 +56,7 @@ const Performance: React.FC = () => {
       fetchPlans();
       setIsCreatePlanModalOpen(false);
     } catch (err) {
-      setError('Failed to create performance plan');
+      setError('Tạo kế hoạch hiệu suất thất bại');
     }
   };
 
@@ -72,12 +72,12 @@ const Performance: React.FC = () => {
       fetchReviews(selectedPlan.id);
       setIsCreateReviewModalOpen(false);
     } catch (err) {
-      setError('Failed to create review');
+      setError('Tạo đánh giá thất bại');
     }
   };
 
   if (loading) {
-    return <div className="p-4">Loading...</div>;
+    return <div className="p-4">Đang tải...</div>;
   }
 
   if (error) {
@@ -146,7 +146,7 @@ const Performance: React.FC = () => {
                         fetchReviews(plan.id);
                       }}
                     >
-                      View Reviews
+                      Xem đánh giá
                     </button>
                     {isManager && new Date(plan.endDate) > new Date() && (
                       <button
@@ -156,7 +156,7 @@ const Performance: React.FC = () => {
                           setIsCreateReviewModalOpen(true);
                         }}
                       >
-                        Add Review
+                        Thêm đánh giá
                       </button>
                     )}
                   </td>
@@ -205,7 +205,7 @@ const Performance: React.FC = () => {
                           setIsReviewDetailsModalOpen(true);
                         }}
                       >
-                        View Details
+                        Xem chi tiết
                       </button>
                     </td>
                   </tr>

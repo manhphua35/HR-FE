@@ -7,13 +7,13 @@ const Unauthorized: React.FC = () => {
       <div className="text-6xl font-bold text-red-500 mb-4">
         <i className="fas fa-exclamation-triangle"></i>
       </div>
-      <h1 className="text-3xl font-bold text-gray-800">Access Denied</h1>
-      <p className="text-gray-600 mt-4 mb-6">You don't have permission to access this page. Please contact your administrator if you think this is an error.</p>
-      <Link 
+      <h1 className="text-3xl font-bold text-gray-800">Truy cập bị từ chối</h1>
+      <p className="text-gray-600 mt-4 mb-6">Bạn không có quyền truy cập trang này. Vui lòng liên hệ quản trị viên nếu bạn cho rằng đây là lỗi.</p>
+      <Link
         to="/dashboard" 
         className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
       >
-        Back to Dashboard
+        Quay lại Trang chủ
       </Link>
     </div>
   );

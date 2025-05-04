@@ -37,7 +37,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ userId }) => {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-800 mb-5">Employee Dashboard</h2>
+      <h2 className="text-2xl font-bold text-gray-800 mb-5">Trang chủ Nhân viên</h2> 
       
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">

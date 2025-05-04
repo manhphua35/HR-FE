@@ -32,10 +32,10 @@ const ViewEmployeeModal: React.FC<ViewEmployeeModalProps> = ({ isOpen, onClose, 
         {/* Modal Body */}
         <div className="space-y-4">
           <div className="flex justify-center mb-4">
-             <img 
-                className="h-24 w-24 rounded-full object-cover" 
-                src={employeeData.avatar || 'https://via.placeholder.com/150'} // Placeholder nếu không có avatar
-                alt={employeeData.fullName} 
+             <img
+                className="h-24 w-24 rounded-full object-cover"
+                src={employeeData.avatar || '/logo192.png'} // Use local logo as fallback
+                alt={employeeData.fullName}
              />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">

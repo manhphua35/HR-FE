@@ -34,23 +34,23 @@ const Login = () => {
       navigate('/dashboard');
     } catch (err) {
       const error = err as AxiosErrorWithResponse;
-      console.log('Login error:', error);
+      
       if (error.isAxiosError) {
         // Handle API error responses
         const status = error.response?.status;
         
         if (status === 401) {
-          setError('Invalid username or password');
+          setError('Tên đăng nhập hoặc mật khẩu không hợp lệ');
         } else if (status === 404) {
-          setError('User not found');
+          setError('Không tìm thấy người dùng');
         } else if (error.response?.data.message) {
           setError(error.response.data.message);
         } else {
-          setError('Network error. Please check your connection');
+          setError('Lỗi mạng. Vui lòng kiểm tra kết nối của bạn');
         }
       } else {
-        console.log('Login error:', error);
-        setError(`An unexpected error occurred: ${error.message}`);
+        
+        setError(`Đã xảy ra lỗi không mong muốn: ${error.message}`);
       }
       console.error('Login error:', error);
     } finally {
