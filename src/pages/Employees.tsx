@@ -62,10 +62,7 @@ const Employees: React.FC = () => {
     // Đổi nameMatch thành fullNameMatch và sử dụng employee.fullName
     const fullNameMatch = (employee.fullName || '').toLowerCase().includes(searchTerm.toLowerCase());
     const emailMatch = (employee.email || '').toLowerCase().includes(searchTerm.toLowerCase());
-    // Sửa lỗi: Kiểm tra tường minh kiểu dữ liệu của position trước khi gọi toLowerCase
-    const positionValue = employee.position;
-    const positionString = typeof positionValue === 'string' ? positionValue : ''; // Chỉ lấy giá trị nếu là string
-    const positionMatch = positionString.toLowerCase().includes(searchTerm.toLowerCase());
+    const positionMatch = (employee.position?.title || '').toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesSearch = fullNameMatch || emailMatch || positionMatch; // Cập nhật matchesSearch
 

@@ -58,7 +58,7 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({ isOpen, onClose, onSu
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
       <div className="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold">Create Performance Plan</h3>
+          <h3 className="text-xl font-bold">Tạo kế hoạch hiệu suất</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-500"
@@ -70,7 +70,7 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({ isOpen, onClose, onSu
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2">
-              Title
+              Tiêu đề
             </label>
             <input
               type="text"
@@ -83,7 +83,7 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({ isOpen, onClose, onSu
 
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2">
-              Description
+              Mô tả
             </label>
             <textarea
               className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -96,7 +96,7 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({ isOpen, onClose, onSu
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-gray-700 text-sm font-bold mb-2">
-                Start Date
+                Ngày bắt đầu
               </label>
               <input
                 type="date"
@@ -108,7 +108,7 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({ isOpen, onClose, onSu
             </div>
             <div>
               <label className="block text-gray-700 text-sm font-bold mb-2">
-                End Date
+                Ngày kết thúc
               </label>
               <input
                 type="date"
@@ -122,13 +122,13 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({ isOpen, onClose, onSu
 
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2">
-              Evaluation Criteria
+              Tiêu chí đánh giá
             </label>
             {formData.criteria.map((criterion, index) => (
               <div key={criterion.id} className="mb-4 p-4 border rounded">
                 <div className="grid grid-cols-2 gap-4 mb-2">
                   <div>
-                    <label className="block text-gray-700 text-xs mb-1">Name</label>
+                    <label className="block text-gray-700 text-xs mb-1">Tên tiêu chí</label>
                     <input
                       type="text"
                       className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 text-sm"
@@ -141,7 +141,7 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({ isOpen, onClose, onSu
                     />
                   </div>
                   <div>
-                    <label className="block text-gray-700 text-xs mb-1">Weight (%)</label>
+                    <label className="block text-gray-700 text-xs mb-1">Trọng số (%)</label>
                     <input
                       type="number"
                       min="0"
@@ -157,7 +157,7 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({ isOpen, onClose, onSu
                   </div>
                 </div>
                 <div>
-                  <label className="block text-gray-700 text-xs mb-1">Description</label>
+                  <label className="block text-gray-700 text-xs mb-1">Mô tả</label>
                   <input
                     type="text"
                     className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 text-sm"
@@ -179,13 +179,13 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({ isOpen, onClose, onSu
               onClick={onClose}
               className="px-4 py-2 text-gray-500 hover:text-gray-700"
             >
-              Cancel
+              Hủy
             </button>
             <button
               type="submit"
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
-              Create Plan
+              Tạo kế hoạch
             </button>
           </div>
         </form>

@@ -14,7 +14,17 @@ interface ApiResponse<T> {
   message?: string;
 }
 
+export interface Role {
+  type: string;
+  name: string;
+}
+
 export const AuthService = {
+  getRoles: async (): Promise<Role[]> => {
+    const response = await axiosInstance.get<ApiResponse<Role[]>>('/auth/roles');
+    return response.data.data;
+  },
+
   login: async (username: string, password: string): Promise<LoginResponse> => {
     // Sử dụng axios thông thường và URL đầy đủ cho login
     const response = await axios.post<ApiResponse<LoginResponse>>(

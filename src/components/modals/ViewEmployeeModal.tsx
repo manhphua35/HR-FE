@@ -50,7 +50,7 @@ const ViewEmployeeModal: React.FC<ViewEmployeeModalProps> = ({ isOpen, onClose, 
             <div><strong className="text-gray-600">Điện thoại:</strong> {displayValue(employeeData.phone)}</div>
             <div><strong className="text-gray-600">Ngày vào làm:</strong> {displayValue(employeeData.hireDate?.split('T')[0])}</div>
             <div><strong className="text-gray-600">Trạng thái:</strong> {displayValue(employeeData.status)}</div>
-            <div><strong className="text-gray-600">Role ID:</strong> {displayValue(employeeData.roleId)}</div>
+            <div><strong className="text-gray-600">Vai trò:</strong> {displayValue(employeeData.role?.name)}</div>
           </div>
         </div>
 

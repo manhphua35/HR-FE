@@ -5,6 +5,94 @@ export interface ApiResponse<T> {
   data: T;
 }
 
+export interface DashboardOverview {
+  totalEmployees: number;
+  totalDepartments: number;
+  activeLeaves: number;
+  currentTrainings: number;
+  totalSalary: number;
+  averagePerformance: number;
+}
+
+export interface DepartmentStat {
+  departmentId: number;
+  departmentName: string;
+  employeeCount: number;
+  activeLeaves: number;
+  ongoingTrainings: number;
+  averagePerformance: number;
+  totalSalary: number;
+}
+
+export interface DepartmentCount {
+  department: string;
+  count: number;
+}
+
+export interface DepartmentScore {
+  department: string;
+  score: number;
+}
+
+export interface DepartmentAmount {
+  department: string;
+  amount: number;
+}
+
+export interface LeaveStats {
+  total: number;
+  byDepartment: DepartmentCount[];
+}
+
+export interface TrainingStats {
+  total: number;
+  byDepartment: DepartmentCount[];
+}
+
+export interface PerformanceStats {
+  averageScore: number;
+  byDepartment: DepartmentScore[];
+}
+
+export interface SalaryStats {
+  total: number;
+  byDepartment: DepartmentAmount[];
+}
+
+export interface DashboardData {
+  overview: DashboardOverview;
+  departmentStats: DepartmentStat[];
+  leaveStats: LeaveStats;
+  trainingStats: TrainingStats;
+  performanceStats: PerformanceStats;
+  salaryStats: SalaryStats;
+}
+
+// User Types
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  fullName: string;
+  role: {
+    id: number;
+    roleType: 'SYSTEM_ADMIN' | 'HR_MANAGER' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
+    name: string;
+    description: string;
+  };
+  departmentId: number | null;
+  roleId: number;
+  hireDate: string;
+  remainingLeaves: number;
+  baseSalary: string;
+  isActive: boolean;
+  department?: string;
+  position?: string;
+  avatar?: string;
+  lastLogin?: string;
+  status?: 'active' | 'inactive';
+}
+
 // Performance Types
 export interface PerformancePlan {
   id: number;
@@ -37,77 +125,6 @@ export interface PerformanceReview {
   strengths?: string;
   weaknesses?: string;
   improvement?: string;
-}
-
-// User Types (Matching backend response)
-export interface User {
-  id: number;
-  username: string;
-  email: string;
-  fullName: string; // Added from backend response
-  role: { // Updated to match nested structure from API response
-    id: number;
-    roleType: 'SYSTEM_ADMIN' | 'HR_MANAGER' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
-    name: string;
-    description: string;
-  };
-  // permissions: string[]; // Assuming permissions might not be directly on user object based on response
-  departmentId: number | null;
-  roleId: number; // Added from response
-  hireDate: string; // Added from response
-  remainingLeaves: number; // Added from response
-  baseSalary: string; // Added from response
-  isActive: boolean; // Added from response
-  // Optional fields
-  department?: string;
-  position?: string;
-  avatar?: string;
-  lastLogin?: string;
-  status?: 'active' | 'inactive'; // Made optional as it wasn't in the login response
-}
-
-// Dashboard Types
-export interface DashboardStats {
-  totalEmployees: number;
-  departmentsCount: number;
-  averagePerformance: number;
-  issuesCount: number;
-  attendanceRate: number;
-  leaveRequests: number;
-  openPositions: number;
-  projectsCount: number;
-}
-
-export interface DepartmentStats {
-  employeeCount: number;
-  activeProjects: number;
-  pendingLeaveRequests: number;
-  averagePerformance: number;
-  attendance: {
-    present: number;
-    total: number;
-  };
-  projectCompletion: number;
-  trainingProgress: number;
-}
-
-export interface EmployeeStats {
-  workingHours: number;
-  attendanceRate: number;
-  performanceScore: number;
-  leaveBalance: number;
-  schedule: Array<{
-    id: number;
-    title: string;
-    date: string;
-    type: string;
-  }>;
-  activities: Array<{
-    id: number;
-    type: string;
-    description: string;
-    timestamp: string;
-  }>;
 }
 
 // Notification Types

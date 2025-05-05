@@ -1,85 +1,60 @@
-import axios from 'axios';
-import { API_URL } from '../config';
-import { ApiResponse, PerformancePlan, PerformanceReview } from '../types/api';
+import axios from '../config/axios';
+import { PerformancePlan, PerformanceReview } from '../types/api';
 
-interface CreatePlanData extends Omit<PerformancePlan, 'id' | 'departmentId' | 'createdBy'> {}
-interface CreateReviewData extends Omit<PerformanceReview, 'id' | 'planId' | 'reviewerId'> {}
+interface DepartmentReview {
+  reviewId: number;
+  employeeName: string;
+  planTitle: string;
+  reviewDate: string;
+  totalScore: string;
+}
 
-export const PerformanceService = {
-  getPlans: async (): Promise<PerformancePlan[]> => {
-    const response = await axios.get<ApiResponse<PerformancePlan[]>>(
-      `${API_URL}/performance/plans/department`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      }
-    );
-    return response.data.data;
-  },
+interface DepartmentPerformance {
+  department: string;
+  reviews: DepartmentReview[];
+}
 
-  getReviews: async (planId: number): Promise<PerformanceReview[]> => {
-    const response = await axios.get<ApiResponse<PerformanceReview[]>>(
-      `${API_URL}/performance/reviews/department/${planId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      }
-    );
-    return response.data.data;
-  },
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+}
 
-  createPlan: async (data: CreatePlanData): Promise<PerformancePlan> => {
-    const response = await axios.post<ApiResponse<PerformancePlan>>(
-      `${API_URL}/performance/plans/create`,
-      data,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      }
-    );
-    return response.data.data;
-  },
+export class PerformanceService {
+  static async getDepartmentPlans(): Promise<PerformancePlan[]> {
+    const { data } = await axios.get<ApiResponse<PerformancePlan[]>>('/performance/plans/department');
+    return data.data;
+  }
 
-  createReview: async (data: CreateReviewData & { planId: number }): Promise<PerformanceReview> => {
-    const response = await axios.post<ApiResponse<PerformanceReview>>(
-      `${API_URL}/performance/reviews/create`,
-      data,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      }
-    );
-    return response.data.data;
-  },
+  static async getOverallPerformance(): Promise<DepartmentPerformance[]> {
+    const { data } = await axios.get<ApiResponse<DepartmentPerformance[]>>('/performance/overall');
+    return data.data;
+  }
 
-  updateReview: async (reviewId: number, data: Partial<PerformanceReview>): Promise<PerformanceReview> => {
-    const response = await axios.put<ApiResponse<PerformanceReview>>(
-      `${API_URL}/performance/reviews/${reviewId}`,
-      data,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      }
-    );
-    return response.data.data;
-  },
-
-  // Get overall plans (for Admin/HR) - Assumes endpoint returns PerformancePlan[]
-  getOverallPlans: async (): Promise<PerformancePlan[]> => {
-    const response = await axios.get<ApiResponse<PerformancePlan[]>>(
-      `${API_URL}/performance/overall`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      }
-    );
-    // Assuming the overall endpoint also returns data in response.data.data
+  static async createPlan(data: Omit<PerformancePlan, 'id' | 'departmentId' | 'createdBy'>): Promise<PerformancePlan> {
+    const response = await axios.post<ApiResponse<PerformancePlan>>('/performance/plans/create', data);
     return response.data.data;
   }
-};
+
+  static async getDepartmentReviews(planId: number): Promise<PerformanceReview[]> {
+    const { data } = await axios.get<ApiResponse<PerformanceReview[]>>(`/performance/reviews/department/${planId}`);
+    return data.data;
+  }
+
+  static async createReview(data: {
+    planId: number;
+    employeeId: number;
+    reviewDate: string;
+    scores: {
+      criteriaId: number;
+      score: number;
+      comment: string;
+    }[];
+    comments?: string;
+    strengths?: string;
+    weaknesses?: string;
+    improvement?: string;
+  }): Promise<PerformanceReview> {
+    const response = await axios.post<ApiResponse<PerformanceReview>>('/performance/reviews/create', data);
+    return response.data.data;
+  }
+}

@@ -9,15 +9,15 @@ export interface Department {
   description?: string; // Optional based on API data
 }
 
-// Interface cho Position (dựa trên dữ liệu API mẫu)
+
+// Interface cho Position
 export interface Position {
-  id: string; // UUID
+  id: string;
   title: string;
-  level?: number; // Optional based on API data
-  departmentId?: number; // Optional based on API data
+  level?: number;
 }
 
-// Interface cho Role (dựa trên dữ liệu API mẫu)
+// Interface cho Role
 export interface Role {
   id: number;
   roleType: string; // e.g., "SYSTEM_ADMIN", "HR_STAFF"
@@ -35,8 +35,8 @@ export interface Employee {
   username: string;
   fullName: string;
   email: string;
-  position: Position | null; // Updated type
-  department: Department | null; // Updated type
+  department: Department | null;
+  position: Position | null;
   phone: string | null; // Updated type to allow null
   status?: string; // Status không có trong API mẫu, đánh dấu optional
   avatar: string | null; // Updated type to allow null (API mẫu không có)
@@ -44,8 +44,7 @@ export interface Employee {
   role: Role | null; // Updated type
   // Các trường khác từ API mẫu
   departmentId: number | null;
-  positionId: string | null; // UUID
-  roleId: number; // Vẫn giữ roleId nếu cần thiết
+  roleType: string; // e.g., "SYSTEM_ADMIN", "HR_STAFF"
   remainingLeaves?: number; // Optional based on API data
   baseSalary?: string; // Optional based on API data, có thể là number?
   isActive?: boolean; // Optional based on API data
@@ -60,13 +59,12 @@ export interface CreateEmployeePayload {
   password?: string; // Password thường chỉ bắt buộc khi tạo
   fullName: string;
   email: string;
-  positionId: string | null; // Gửi positionId thay vì object
   departmentId: number | null; // Gửi departmentId thay vì object
   phone?: string | null; // Allow null
-  status?: string; // Optional?
+  isActive?: boolean;
   avatar?: string | null; // Allow null
   hireDate: string;
-  roleId: number;
+  roleType: string;
   // Thêm các trường cần thiết khác khi tạo
   baseSalary?: string; // Hoặc number
   remainingLeaves?: number;

@@ -19,7 +19,7 @@ export interface DepartmentSummary {
 export const DepartmentService = {
   getDepartments: async (): Promise<Department[]> => {
     const response = await axios.get<{ data: Department[] }>(
-      `${API_URL}/departments`,
+      `${API_URL}/departments/list`,
       {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`
@@ -31,7 +31,7 @@ export const DepartmentService = {
 
   getDepartmentSummary: async (): Promise<DepartmentSummary> => {
     const response = await axios.get<{ data: DepartmentSummary }>(
-      `${API_URL}/departments/summary`,
+      `${API_URL}/departments/list/summary`,
       {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`
@@ -43,7 +43,7 @@ export const DepartmentService = {
 
   createDepartment: async (data: Omit<Department, 'id'>): Promise<Department> => {
     const response = await axios.post<{ data: Department }>(
-      `${API_URL}/departments`,
+      `${API_URL}/departments/list`,
       data,
       {
         headers: {
@@ -59,7 +59,7 @@ export const DepartmentService = {
     data: Partial<Department>
   ): Promise<Department> => {
     const response = await axios.put<{ data: Department }>(
-      `${API_URL}/departments/${id}`,
+      `${API_URL}/departments/list/${id}`,
       data,
       {
         headers: {
@@ -72,7 +72,7 @@ export const DepartmentService = {
 
   deleteDepartment: async (id: number): Promise<void> => {
     await axios.delete(
-      `${API_URL}/departments/${id}`,
+      `${API_URL}/departments/list/${id}`,
       {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('accessToken')}`

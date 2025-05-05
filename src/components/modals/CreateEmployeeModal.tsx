@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-// Import cả CreateEmployeePayload
+import React, { useState, useEffect } from 'react';
 import { EmployeeService, Employee, CreateEmployeePayload } from '../../services/EmployeeService';
+import { AuthService, Role } from '../../services/AuthService';
+import { DepartmentService } from '../../services/DepartmentService';
 
 interface CreateEmployeeModalProps {
   isOpen: boolean;
@@ -15,16 +16,38 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   // Đổi state để lưu ID thay vì tên
-  const [positionId, setPositionId] = useState(''); // UUID là string
   const [departmentId, setDepartmentId] = useState<number | string>(''); // Lưu string từ input, parse sau
   const [phone, setPhone] = useState('');
   const [hireDate, setHireDate] = useState('');
-  const [status, setStatus] = useState('Đang thử việc');
-  const [roleId, setRoleId] = useState<number | string>(''); // Thêm roleId (kiểu number hoặc string tùy API)
+  const [isActive, setIsActive] = useState(true);
+  const [roleType, setRoleType] = useState<string>(''); // Role type (e.g. "SYSTEM_ADMIN")
   const [avatar, setAvatar] = useState('');
 
+  // State cho roles và departments
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch roles và departments khi modal mở
+  useEffect(() => {
+    if (isOpen) {
+      const fetchData = async () => {
+        try {
+          const [rolesData, departmentsData] = await Promise.all([
+            AuthService.getRoles(),
+            DepartmentService.getDepartments()
+          ]);
+          setRoles(rolesData);
+          setDepartments(departmentsData);
+        } catch (err) {
+          console.error('Failed to fetch data:', err);
+          setError('Không thể tải dữ liệu. Vui lòng thử lại.');
+        }
+      };
+      fetchData();
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,22 +61,14 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
       fullName,
       email,
       // Sửa payload để gửi ID
-      positionId: positionId || null, // Gửi null nếu rỗng
       departmentId: typeof departmentId === 'string' ? parseInt(departmentId, 10) : (departmentId || null), // Parse sang number, gửi null nếu rỗng/NaN
       phone: phone || null, // Gửi null nếu rỗng
-      status,
+      isActive,
       avatar: avatar || undefined,
-      // Chuyển đổi roleId sang number nếu cần và nếu nó đang là string
-      roleId: typeof roleId === 'string' ? parseInt(roleId, 10) : roleId,
+      roleType,
       hireDate: hireDate || new Date().toISOString().split('T')[0],
     };
     
-    // Validate roleId và departmentId sau khi parse
-    if (isNaN(employeeData.roleId as number)) {
-       setError("Role ID không hợp lệ.");
-       setIsLoading(false);
-       return;
-    }
     // Kiểm tra departmentId sau khi parse (nếu không rỗng)
     if (employeeData.departmentId !== null && isNaN(employeeData.departmentId)) {
         setError("Department ID không hợp lệ.");
@@ -146,31 +161,22 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
                 required
               />
             </div>
-            {/* Position ID (Tạm thời nhập text, nên là dropdown) */}
+            {/* Department Dropdown */}
             <div>
-              <label htmlFor="positionId" className="block mb-2 text-sm font-medium text-gray-900">Position ID (UUID)</label>
-              <input
-                type="text"
-                id="positionId"
-                value={positionId}
-                onChange={(e) => setPositionId(e.target.value)}
-                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                placeholder="Nhập Position ID (UUID)"
-                // required // Tạm bỏ required vì có thể là null
-              />
-            </div>
-            {/* Department ID (Tạm thời nhập text, nên là dropdown) */}
-            <div>
-              <label htmlFor="departmentId" className="block mb-2 text-sm font-medium text-gray-900">Department ID</label>
-              <input
-                type="number" // Hoặc text và parse
+              <label htmlFor="departmentId" className="block mb-2 text-sm font-medium text-gray-900">Phòng ban</label>
+              <select
                 id="departmentId"
                 value={departmentId}
-                onChange={(e) => setDepartmentId(e.target.value)} // Lưu string
+                onChange={(e) => setDepartmentId(e.target.value)}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                placeholder="Nhập Department ID"
-                // required // Tạm bỏ required vì có thể là null
-              />
+              >
+                <option value="">Chọn phòng ban</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </option>
+                ))}
+              </select>
             </div>
             {/* Phone */}
             <div>
@@ -195,32 +201,36 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
                 required // API yêu cầu hireDate
               />
             </div>
-             {/* Status */}
+             {/* Active Status */}
              <div>
-              <label htmlFor="status" className="block mb-2 text-sm font-medium text-gray-900">Trạng thái</label>
+              <label htmlFor="isActive" className="block mb-2 text-sm font-medium text-gray-900">Trạng thái</label>
               <select
-                id="status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
+                id="isActive"
+                value={isActive.toString()}
+                onChange={(e) => setIsActive(e.target.value === 'true')}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
               >
-                <option value="Đang thử việc">Đang thử việc</option>
-                <option value="Chính thức">Chính thức</option>
-                <option value="Đã nghỉ việc">Đã nghỉ việc</option>
-                {/* Thêm các trạng thái khác nếu cần */}
+                <option value="true">Đang làm việc</option>
+                <option value="false">Đã nghỉ việc</option>
               </select>
             </div>
-             {/* Role ID */}
+             {/* Role Dropdown */}
              <div>
-              <label htmlFor="roleId" className="block mb-2 text-sm font-medium text-gray-900">Role ID</label>
-              <input
-                type="number" // Hoặc text nếu API nhận string
-                id="roleId"
-                value={roleId}
-                onChange={(e) => setRoleId(e.target.value)} // Lấy value là string, sẽ parse sau
+              <label htmlFor="roleType" className="block mb-2 text-sm font-medium text-gray-900">Vai trò</label>
+              <select
+                id="roleType"
+                value={roleType}
+                onChange={(e) => setRoleType(e.target.value)}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                 required
-              />
+              >
+                <option value="">Chọn vai trò</option>
+                {roles.map((role) => (
+                  <option key={role.type} value={role.type}>
+                    {role.name}
+                  </option>
+                ))}
+              </select>
             </div>
             {/* Avatar URL (Tạm thời) */}
             <div>

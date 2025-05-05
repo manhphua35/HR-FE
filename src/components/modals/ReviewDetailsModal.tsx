@@ -50,7 +50,7 @@ const ReviewDetailsModal: React.FC<ReviewDetailsModalProps> = ({
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
       <div className="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold">Performance Review Details</h3>
+          <h3 className="text-xl font-bold">Chi tiết đánh giá hiệu suất</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-500"
@@ -60,21 +60,21 @@ const ReviewDetailsModal: React.FC<ReviewDetailsModalProps> = ({
         </div>
 
         <div className="space-y-6">
-          {/* Header Information */}
+          {/* Thông tin chung */}
           <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded">
             <div>
-              <p className="text-sm text-gray-600">Employee ID</p>
+              <p className="text-sm text-gray-600">Mã nhân viên</p>
               <p className="font-medium">{review.employeeId}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600">Review Date</p>
+              <p className="text-sm text-gray-600">Ngày đánh giá</p>
               <p className="font-medium">{new Date(review.reviewDate).toLocaleDateString()}</p>
             </div>
           </div>
 
-          {/* Scores */}
+          {/* Điểm số */}
           <div>
-            <h4 className="text-lg font-semibold mb-3">Evaluation Scores</h4>
+            <h4 className="text-lg font-semibold mb-3">Điểm đánh giá</h4>
             <div className="space-y-4">
               {review.scores.map(score => {
                 const criterion = criteria.find(c => c.id === score.criteriaId);
@@ -87,12 +87,12 @@ const ReviewDetailsModal: React.FC<ReviewDetailsModalProps> = ({
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-blue-600">{score.score}%</p>
-                        <p className="text-sm text-gray-500">Weight: {criterion?.weight}%</p>
+                        <p className="text-sm text-gray-500">Trọng số: {criterion?.weight}%</p>
                       </div>
                     </div>
                     {score.comment && (
                       <p className="text-sm text-gray-700 mt-2">
-                        <span className="font-medium">Comment:</span> {score.comment}
+                        <span className="font-medium">Nhận xét:</span> {score.comment}
                       </p>
                     )}
                   </div>
@@ -101,40 +101,40 @@ const ReviewDetailsModal: React.FC<ReviewDetailsModalProps> = ({
             </div>
             <div className="mt-4 p-4 bg-blue-50 rounded">
               <div className="flex justify-between items-center">
-                <p className="text-lg font-semibold">Overall Score</p>
+                <p className="text-lg font-semibold">Điểm tổng hợp</p>
                 <p className="text-3xl font-bold text-blue-600">{calculateAverageScore()}%</p>
               </div>
             </div>
           </div>
 
-          {/* Comments */}
+          {/* Nhận xét chung */}
           {review.comments && (
             <div>
-              <h4 className="text-lg font-semibold mb-2">Overall Comments</h4>
+              <h4 className="text-lg font-semibold mb-2">Nhận xét chung</h4>
               <p className="p-4 bg-gray-50 rounded">{review.comments}</p>
             </div>
           )}
 
-          {/* Strengths and Weaknesses */}
+          {/* Điểm mạnh và điểm yếu */}
           <div className="grid grid-cols-2 gap-4">
             {review.strengths && (
               <div>
-                <h4 className="text-lg font-semibold mb-2">Strengths</h4>
+                <h4 className="text-lg font-semibold mb-2">Điểm mạnh</h4>
                 <p className="p-4 bg-green-50 rounded">{review.strengths}</p>
               </div>
             )}
             {review.weaknesses && (
               <div>
-                <h4 className="text-lg font-semibold mb-2">Areas for Improvement</h4>
+                <h4 className="text-lg font-semibold mb-2">Điểm cần cải thiện</h4>
                 <p className="p-4 bg-yellow-50 rounded">{review.weaknesses}</p>
               </div>
             )}
           </div>
 
-          {/* Development Plan */}
+          {/* Kế hoạch phát triển */}
           {review.improvement && (
             <div>
-              <h4 className="text-lg font-semibold mb-2">Development Plan</h4>
+              <h4 className="text-lg font-semibold mb-2">Kế hoạch phát triển</h4>
               <p className="p-4 bg-purple-50 rounded">{review.improvement}</p>
             </div>
           )}
@@ -144,7 +144,7 @@ const ReviewDetailsModal: React.FC<ReviewDetailsModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
             >
-              Close
+              Đóng
             </button>
           </div>
         </div>

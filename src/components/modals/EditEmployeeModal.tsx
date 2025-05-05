@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-// Import Employee và CreateEmployeePayload (có thể cần UpdateEmployeePayload riêng?)
-import { EmployeeService, Employee, CreateEmployeePayload } from '../../services/EmployeeService'; 
+import { EmployeeService, Employee, CreateEmployeePayload } from '../../services/EmployeeService';
+import { AuthService, Role } from '../../services/AuthService';
+import { DepartmentService } from '../../services/DepartmentService';
 
 interface EditEmployeeModalProps {
   isOpen: boolean;
@@ -16,16 +17,38 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({ isOpen, onClose, 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   // Đổi state để lưu ID
-  const [positionId, setPositionId] = useState(''); // UUID là string
   const [departmentId, setDepartmentId] = useState<number | string>(''); // Lưu string từ input, parse sau
   const [phone, setPhone] = useState('');
   const [hireDate, setHireDate] = useState('');
-  const [status, setStatus] = useState(''); 
-  const [roleId, setRoleId] = useState<number | string>(''); 
+  const [isActive, setIsActive] = useState(true);
+  const [roleType, setRoleType] = useState<string>('');
   const [avatar, setAvatar] = useState(''); 
 
+  // State cho roles và departments
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch roles và departments khi modal mở
+  useEffect(() => {
+    if (isOpen) {
+      const fetchData = async () => {
+        try {
+          const [rolesData, departmentsData] = await Promise.all([
+            AuthService.getRoles(),
+            DepartmentService.getDepartments()
+          ]);
+          setRoles(rolesData);
+          setDepartments(departmentsData);
+        } catch (err) {
+          console.error('Failed to fetch data:', err);
+          setError('Không thể tải dữ liệu. Vui lòng thử lại.');
+        }
+      };
+      fetchData();
+    }
+  }, [isOpen]);
 
   // useEffect để điền dữ liệu khi modal mở hoặc employeeData thay đổi
   useEffect(() => {
@@ -33,14 +56,12 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({ isOpen, onClose, 
       setUsername(employeeData.username || '');
       setFullName(employeeData.fullName || '');
       setEmail(employeeData.email || '');
-      // Sửa lỗi: Gán ID vào state mới
-      setPositionId(employeeData.position?.id || '');
       setDepartmentId(employeeData.department?.id || ''); // Gán ID (number) hoặc ''
       setPhone(employeeData.phone || '');
       // Định dạng lại ngày tháng nếu cần
       setHireDate(employeeData.hireDate ? employeeData.hireDate.split('T')[0] : ''); 
-      setStatus(employeeData.status || '');
-      setRoleId(employeeData.roleId || '');
+      setIsActive(employeeData.isActive ?? true);
+      setRoleType(employeeData.roleType || '');
       setAvatar(employeeData.avatar || '');
       setPassword(''); // Không điền mật khẩu cũ
     }
@@ -62,21 +83,15 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({ isOpen, onClose, 
       fullName,
       email,
       // Sửa payload để gửi ID
-      positionId: positionId || null,
       departmentId: typeof departmentId === 'string' ? parseInt(departmentId, 10) : (departmentId || null),
       phone: phone || null,
-      status,
+      isActive,
       avatar: avatar || null,
-      roleId: typeof roleId === 'string' ? parseInt(roleId, 10) : roleId,
+      roleType,
       hireDate,
     };
 
     // Validate roleId và departmentId
-     if (updatedData.roleId !== undefined && isNaN(updatedData.roleId as number)) {
-       setError("Role ID không hợp lệ.");
-       setIsLoading(false);
-       return;
-     }
      if (updatedData.departmentId !== null && updatedData.departmentId !== undefined && isNaN(updatedData.departmentId)) {
         setError("Department ID không hợp lệ.");
         setIsLoading(false);
@@ -168,31 +183,22 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({ isOpen, onClose, 
                 required
               />
             </div>
-            {/* Position ID (Tạm thời nhập text) */}
+            {/* Department Dropdown */}
             <div>
-              <label htmlFor="edit-positionId" className="block mb-2 text-sm font-medium text-gray-900">Position ID (UUID)</label>
-              <input
-                type="text"
-                id="edit-positionId"
-                value={positionId}
-                onChange={(e) => setPositionId(e.target.value)}
-                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                placeholder="Nhập Position ID (UUID)"
-                // required // Tạm bỏ required
-              />
-            </div>
-            {/* Department ID (Tạm thời nhập text) */}
-            <div>
-              <label htmlFor="edit-departmentId" className="block mb-2 text-sm font-medium text-gray-900">Department ID</label>
-              <input
-                type="number" // Hoặc text
+              <label htmlFor="edit-departmentId" className="block mb-2 text-sm font-medium text-gray-900">Phòng ban</label>
+              <select
                 id="edit-departmentId"
                 value={departmentId}
-                onChange={(e) => setDepartmentId(e.target.value)} // Lưu string
+                onChange={(e) => setDepartmentId(e.target.value)}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                placeholder="Nhập Department ID"
-                // required // Tạm bỏ required
-              />
+              >
+                <option value="">Chọn phòng ban</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </option>
+                ))}
+              </select>
             </div>
             {/* Phone */}
             <div>
@@ -217,33 +223,37 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({ isOpen, onClose, 
                 required 
               />
             </div>
-             {/* Status */}
+             {/* Active Status */}
              <div>
-              <label htmlFor="edit-status" className="block mb-2 text-sm font-medium text-gray-900">Trạng thái</label>
+              <label htmlFor="edit-isActive" className="block mb-2 text-sm font-medium text-gray-900">Trạng thái</label>
               <select
-                id="edit-status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
+                id="edit-isActive"
+                value={isActive.toString()}
+                onChange={(e) => setIsActive(e.target.value === 'true')}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                 required
               >
-                <option value="Đang thử việc">Đang thử việc</option>
-                <option value="Chính thức">Chính thức</option>
-                <option value="Đã nghỉ việc">Đã nghỉ việc</option>
-                {/* Thêm các trạng thái khác nếu cần */}
+                <option value="true">Đang làm việc</option>
+                <option value="false">Đã nghỉ việc</option>
               </select>
             </div>
-             {/* Role ID */}
+             {/* Role Dropdown */}
              <div>
-              <label htmlFor="edit-roleId" className="block mb-2 text-sm font-medium text-gray-900">Role ID</label>
-              <input
-                type="number" // Hoặc text nếu API nhận string
-                id="edit-roleId"
-                value={roleId}
-                onChange={(e) => setRoleId(e.target.value)} 
+              <label htmlFor="edit-roleType" className="block mb-2 text-sm font-medium text-gray-900">Vai trò</label>
+              <select
+                id="edit-roleType"
+                value={roleType}
+                onChange={(e) => setRoleType(e.target.value)}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                 required
-              />
+              >
+                <option value="">Chọn vai trò</option>
+                {roles.map((role) => (
+                  <option key={role.type} value={role.type}>
+                    {role.name}
+                  </option>
+                ))}
+              </select>
             </div>
             {/* Avatar URL (Tạm thời) */}
             <div>

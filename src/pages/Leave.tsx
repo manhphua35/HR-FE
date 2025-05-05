@@ -1,216 +1,273 @@
 import React, { useState, useEffect } from 'react';
-import { LeaveService } from '../services/LeaveService';
-import CreateLeaveRequestModal from '../components/modals/CreateLeaveRequestModal';
+import { LeaveService, LeaveRequest } from '../services/LeaveService';
 import { useAuth } from '../contexts/AuthContext';
+import { format } from 'date-fns';
 
-// Temporary interface definition to match backend expectations
-interface CreateLeaveRequestData {
-  startDate: string;
-  endDate: string;
-  type: string;
-  reason?: string;
-  numberOfDays: number;
-}
+const Leave: React.FC = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'SYSTEM_ADMIN' || user?.role === 'HR_STAFF';
 
-const LeavePage: React.FC = () => {
-  const { currentUser } = useAuth();
-  const [leaves, setLeaves] = useState<any[]>([]);
+  const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>("");
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState<string>("");
-  const [showRejectionModal, setShowRejectionModal] = useState(false);
-  const [selectedLeaveId, setSelectedLeaveId] = useState<number | null>(null);
-  const [summary, setSummary] = useState<any | null>(null);
-
-  // Check if user is HR staff based on current roleType
-  const isHrStaff = currentUser?.role?.roleType === 'HR_MANAGER';
+  const [error, setError] = useState<string | null>(null);
+  
+  // Filter states
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [status, setStatus] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
+  const [type, setType] = useState<'ALL' | 'ANNUAL' | 'SICK' | 'OTHER'>('ALL');
 
   useEffect(() => {
-    fetchLeaveData();
-  }, []);
+    fetchLeaves();
+  }, [isAdmin, startDate, endDate, status, type]);
 
-  const fetchLeaveData = async () => {
+  const fetchLeaves = async () => {
     try {
       setLoading(true);
-      
-      // Get user leave requests from API
-      const leavesData = await LeaveService.getLeaveRequests();
-      setLeaves(leavesData);
-      
-      // // This API endpoint might not exist yet in the backend - you may need to implement it
-      // try {
-      //   // const summaryData = await LeaveService.getLeaveSummary(); // Endpoint not available
-      //   // setSummary(summaryData);
-      // } catch (err) {
-      //   // console.warn("Leave summary endpoint not available");
-      // }
-      
-      setError("");
+      let data: LeaveRequest[];
+
+      if (isAdmin) {
+        const params: any = {};
+        if (startDate) params.startDate = startDate;
+        if (endDate) params.endDate = endDate;
+        if (status !== 'ALL') params.status = status;
+        if (type !== 'ALL') params.type = type;
+        
+        data = await LeaveService.getAllLeaves(params);
+      } else {
+        data = await LeaveService.getMyLeaves();
+      }
+
+      setLeaves(data);
+      setError(null);
     } catch (err) {
-      setError("Lấy dữ liệu nghỉ phép thất bại");
-      console.error(err);
+      console.error('Failed to fetch leaves:', err);
+      setError('Không thể tải dữ liệu nghỉ phép');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateLeave = async (data: any) => {
+  const handleDeleteLeave = async (id: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa đơn nghỉ phép này?')) return;
+
     try {
-      // Ensure proper calculation of number of days
-      const start = new Date(data.startDate);
-      const end = new Date(data.endDate);
-      const diffTime = Math.abs(end.getTime() - start.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end date
-      
-      // Create leave request with needed data
-      const leaveData: CreateLeaveRequestData = {
-        startDate: data.startDate,
-        endDate: data.endDate,
-        type: data.type,
-        reason: data.reason,
-        numberOfDays: diffDays
-      };
-      
-      // @ts-ignore - Ignore type mismatch with original LeaveService interface
-      await LeaveService.createLeaveRequest(leaveData);
-      setIsCreateModalOpen(false);
-      fetchLeaveData();
+      await LeaveService.deleteLeave(id);
+      await fetchLeaves();
     } catch (err) {
-      setError("Tạo yêu cầu nghỉ phép thất bại");
-      console.error(err);
+      console.error('Failed to delete leave:', err);
+      setError('Không thể xóa đơn nghỉ phép');
     }
   };
 
   const handleApproveLeave = async (id: number) => {
     try {
-      await LeaveService.approveLeaveRequest(id);
-      fetchLeaveData();
+      await LeaveService.approveLeave(id);
+      await fetchLeaves();
     } catch (err) {
-      setError("Phê duyệt yêu cầu nghỉ phép thất bại");
-      console.error(err);
+      console.error('Failed to approve leave:', err);
+      setError('Không thể duyệt đơn nghỉ phép');
     }
   };
 
-  const openRejectionModal = (id: number) => {
-    setSelectedLeaveId(id);
-    setShowRejectionModal(true);
+  const handleRejectLeave = async (id: number) => {
+    try {
+      await LeaveService.rejectLeave(id);
+      await fetchLeaves();
+    } catch (err) {
+      console.error('Failed to reject leave:', err);
+      setError('Không thể từ chối đơn nghỉ phép');
+    }
   };
 
-  const handleRejectLeave = async () => {
-    if (!selectedLeaveId || !rejectionReason) return;
-    
-    try {
-      await LeaveService.rejectLeaveRequest(selectedLeaveId, rejectionReason);
-      setShowRejectionModal(false);
-      setRejectionReason("");
-      setSelectedLeaveId(null);
-      fetchLeaveData();
-    } catch (err) {
-      setError("Từ chối yêu cầu nghỉ phép thất bại");
-      console.error(err);
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
+      case 'APPROVED': return 'bg-green-100 text-green-800';
+      case 'REJECTED': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'ANNUAL': return 'Nghỉ phép năm';
+      case 'SICK': return 'Nghỉ ốm';
+      case 'OTHER': return 'Khác';
+      default: return type;
     }
   };
 
   if (loading) {
-    return <div className="p-6">Đang tải...</div>;
-  }
-
-  if (error) {
-    return <div className="p-6 text-red-500">{error}</div>;
+    return (
+      <div className="flex items-center justify-center p-6">
+        <div className="text-gray-500">
+          <i className="fas fa-spinner fa-spin mr-2"></i>
+          Đang tải...
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Leave Management</h2>
+        <h1 className="text-2xl font-bold text-gray-800">Quản lý nghỉ phép</h1>
         <button
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          onClick={() => setIsCreateModalOpen(true)}
+          onClick={() => {/* TODO: Open create modal */}}
+          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
         >
-          New Leave Request
+          <i className="fas fa-plus mr-2"></i>
+          Tạo đơn nghỉ phép
         </button>
       </div>
 
-      {/* Leave Summary Cards - Commented out as summary endpoint is not available */}
-      {/* {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          ... summary cards ...
+      {error && (
+        <div className="p-4 text-sm text-red-700 bg-red-100 rounded-lg">
+          <i className="fas fa-exclamation-circle mr-2"></i>
+          {error}
         </div>
-      )} */}
+      )}
 
-      {/* Leave Balance - Commented out as summary endpoint is not available */}
-      {/* {summary && summary.leaveBalance && (
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          ... leave balance ...
+      {isAdmin && (
+        <div className="bg-white rounded-lg shadow p-6 space-y-4">
+          <h2 className="text-lg font-medium text-gray-700">Bộ lọc</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Từ ngày
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Đến ngày
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Trạng thái
+              </label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+                className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="ALL">Tất cả</option>
+                <option value="PENDING">Đang chờ</option>
+                <option value="APPROVED">Đã duyệt</option>
+                <option value="REJECTED">Từ chối</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Loại nghỉ
+              </label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value as any)}
+                className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="ALL">Tất cả</option>
+                <option value="ANNUAL">Nghỉ phép năm</option>
+                <option value="SICK">Nghỉ ốm</option>
+                <option value="OTHER">Khác</option>
+              </select>
+            </div>
+          </div>
         </div>
-      )} */}
+      )}
 
-      {/* Leave Requests Table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold">My Leave Requests</h3>
-        </div>
+      <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="w-full text-sm text-left text-gray-500">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Range</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
-                {isHrStaff && <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>}
+                <th scope="col" className="px-6 py-4">Nhân viên</th>
+                <th scope="col" className="px-6 py-4">Loại nghỉ</th>
+                <th scope="col" className="px-6 py-4">Thời gian</th>
+                <th scope="col" className="px-6 py-4">Số ngày</th>
+                <th scope="col" className="px-6 py-4">Lý do</th>
+                <th scope="col" className="px-6 py-4">Trạng thái</th>
+                <th scope="col" className="px-6 py-4">Người duyệt</th>
+                {isAdmin && <th scope="col" className="px-6 py-4">Thao tác</th>}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody>
               {leaves.map((leave) => (
-                <tr key={leave.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900 capitalize">{String(leave.type).toLowerCase()}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {new Date(leave.startDate).toLocaleDateString()} - {new Date(leave.endDate).toLocaleDateString()}
+                <tr key={leave.id} className="bg-white border-b hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <img
+                          className="h-10 w-10 rounded-full"
+                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(leave.user.fullName)}&background=random`}
+                          alt={leave.user.fullName}
+                        />
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {leave.user.fullName}
+                        </div>
+                      </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900">{leave.numberOfDays}</span>
+                  <td className="px-6 py-4">{getTypeLabel(leave.type)}</td>
+                  <td className="px-6 py-4">
+                    {format(new Date(leave.startDate), 'dd/MM/yyyy')} - {format(new Date(leave.endDate), 'dd/MM/yyyy')}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                      ${String(leave.status).toUpperCase() === 'APPROVED' ? 'bg-green-100 text-green-800' : 
-                        String(leave.status).toUpperCase() === 'REJECTED' ? 'bg-red-100 text-red-800' : 
-                        'bg-yellow-100 text-yellow-800'}`}>
-                      {String(leave.status).toLowerCase()}
+                  <td className="px-6 py-4">{leave.numberOfDays}</td>
+                  <td className="px-6 py-4">{leave.reason}</td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(leave.status)}`}>
+                      {leave.status === 'PENDING' && 'Đang chờ'}
+                      {leave.status === 'APPROVED' && 'Đã duyệt'}
+                      {leave.status === 'REJECTED' && 'Từ chối'}
                     </span>
-                    {leave.rejectionReason && (
-                      <div className="text-xs text-red-500 mt-1">
-                        {leave.rejectionReason}
+                  </td>
+                  <td className="px-6 py-4">
+                    {leave.approver?.fullName || '-'}
+                  </td>
+                  {isAdmin && (
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-2">
+                        {leave.status === 'PENDING' && (
+                          <>
+                            <button
+                              onClick={() => handleApproveLeave(leave.id)}
+                              className="text-green-600 hover:text-green-900"
+                              title="Duyệt"
+                            >
+                              <i className="fas fa-check"></i>
+                            </button>
+                            <button
+                              onClick={() => handleRejectLeave(leave.id)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Từ chối"
+                            >
+                              <i className="fas fa-times"></i>
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={() => handleDeleteLeave(leave.id)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Xóa"
+                        >
+                          <i className="fas fa-trash-alt"></i>
+                        </button>
                       </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900">{leave.reason || '-'}</span>
-                  </td>
-                  {isHrStaff && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {String(leave.status).toUpperCase() === 'PENDING' && (
-                        <>
-                          <button
-                            onClick={() => handleApproveLeave(leave.id)}
-                            className="text-green-600 hover:text-green-900 mr-3"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => openRejectionModal(leave.id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
                     </td>
                   )}
                 </tr>
@@ -218,55 +275,15 @@ const LeavePage: React.FC = () => {
             </tbody>
           </table>
         </div>
-      </div>
 
-      <CreateLeaveRequestModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={handleCreateLeave}
-      />
-
-      {/* Rejection Modal */}
-      {showRejectionModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-auto">
-            <h3 className="text-lg font-medium mb-4">Reject Leave Request</h3>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Rejection Reason (Required)
-              </label>
-              <textarea
-                className="w-full p-2 border border-gray-300 rounded-md"
-                rows={4}
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Please provide a reason for rejection"
-              />
-            </div>
-            <div className="flex justify-end space-x-3">
-              <button
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md"
-                onClick={() => {
-                  setShowRejectionModal(false);
-                  setRejectionReason("");
-                  setSelectedLeaveId(null);
-                }}
-              >
-                Hủy
-              </button>
-              <button
-                className="px-4 py-2 bg-red-600 text-white rounded-md disabled:bg-red-300"
-                disabled={!rejectionReason.trim()}
-                onClick={handleRejectLeave}
-              >
-                Reject
-              </button>
-            </div>
+        {leaves.length === 0 && (
+          <div className="text-center py-4 text-gray-500">
+            Không có dữ liệu
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
 
-export default LeavePage;
+export default Leave;

@@ -59,7 +59,7 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
       <div className="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold">Create Performance Review</h3>
+          <h3 className="text-xl font-bold">Tạo đánh giá hiệu suất</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-500"
@@ -72,7 +72,7 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-gray-700 text-sm font-bold mb-2">
-                Employee ID
+                Mã nhân viên
               </label>
               <input
                 type="number"
@@ -84,7 +84,7 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
             </div>
             <div>
               <label className="block text-gray-700 text-sm font-bold mb-2">
-                Review Date
+                Ngày đánh giá
               </label>
               <input
                 type="date"
@@ -97,18 +97,18 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
           </div>
 
           <div className="mb-4">
-            <h4 className="text-lg font-semibold mb-2">Evaluation Scores</h4>
+            <h4 className="text-lg font-semibold mb-2">Điểm đánh giá</h4>
             {formData.scores.map((score, index) => {
               const criterion = criteria.find(c => c.id === score.criteriaId);
               return (
                 <div key={score.criteriaId} className="mb-4 p-4 border rounded">
                   <div className="flex justify-between items-center mb-2">
                     <h5 className="font-medium">{criterion?.name}</h5>
-                    <span className="text-sm text-gray-500">Weight: {criterion?.weight}%</span>
+                    <span className="text-sm text-gray-500">Trọng số: {criterion?.weight}%</span>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-gray-700 text-xs mb-1">Score (0-100)</label>
+                      <label className="block text-gray-700 text-xs mb-1">Điểm (0-100)</label>
                       <input
                         type="number"
                         min="0"
@@ -124,7 +124,7 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="block text-gray-700 text-xs mb-1">Comment</label>
+                      <label className="block text-gray-700 text-xs mb-1">Nhận xét</label>
                       <input
                         type="text"
                         className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 text-sm"
@@ -144,7 +144,7 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
 
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2">
-              Overall Comments
+              Nhận xét chung
             </label>
             <textarea
               className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -157,7 +157,7 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-gray-700 text-sm font-bold mb-2">
-                Strengths
+                Điểm mạnh
               </label>
               <textarea
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -168,7 +168,7 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
             </div>
             <div>
               <label className="block text-gray-700 text-sm font-bold mb-2">
-                Areas for Improvement
+                Điểm cần cải thiện
               </label>
               <textarea
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -181,7 +181,7 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
 
           <div className="mb-4">
             <label className="block text-gray-700 text-sm font-bold mb-2">
-              Development Plan
+              Kế hoạch phát triển
             </label>
             <textarea 
               className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
@@ -197,13 +197,13 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 text-gray-500 hover:text-gray-700"
             >
-              Cancel
+              Hủy
             </button>
             <button
               type="submit"
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
-              Submit Review
+              Tạo đánh giá
             </button>
           </div>
         </form>
