@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { LeaveService, LeaveRequest } from '../services/LeaveService';
 import { useAuth } from '../contexts/AuthContext';
 import { format } from 'date-fns';
+import CreateLeaveModal from '../components/modals/CreateLeaveModal';
 
 const Leave: React.FC = () => {
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'SYSTEM_ADMIN' || user?.role === 'HR_STAFF';
+  const { currentUser } = useAuth();
+  const isAdmin = currentUser?.role?.roleType === 'SYSTEM_ADMIN' || currentUser?.role?.roleType === 'HR_MANAGER';
 
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -38,7 +40,11 @@ const Leave: React.FC = () => {
         data = await LeaveService.getMyLeaves();
       }
 
-      setLeaves(data);
+      // Sort by createdAt in descending order
+      const sortedData = [...data].sort((a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setLeaves(sortedData);
       setError(null);
     } catch (err) {
       console.error('Failed to fetch leaves:', err);
@@ -48,11 +54,11 @@ const Leave: React.FC = () => {
     }
   };
 
-  const handleDeleteLeave = async (id: number) => {
+  const handleDeleteLeave = async (id: any) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa đơn nghỉ phép này?')) return;
 
     try {
-      await LeaveService.deleteLeave(id);
+      await LeaveService.deleteLeave(Number(id));
       await fetchLeaves();
     } catch (err) {
       console.error('Failed to delete leave:', err);
@@ -60,9 +66,9 @@ const Leave: React.FC = () => {
     }
   };
 
-  const handleApproveLeave = async (id: number) => {
+  const handleApproveLeave = async (id: any) => {
     try {
-      await LeaveService.approveLeave(id);
+      await LeaveService.approveLeave(Number(id));
       await fetchLeaves();
     } catch (err) {
       console.error('Failed to approve leave:', err);
@@ -70,9 +76,9 @@ const Leave: React.FC = () => {
     }
   };
 
-  const handleRejectLeave = async (id: number) => {
+  const handleRejectLeave = async (id: any) => {
     try {
-      await LeaveService.rejectLeave(id);
+      await LeaveService.rejectLeave(Number(id));
       await fetchLeaves();
     } catch (err) {
       console.error('Failed to reject leave:', err);
@@ -114,13 +120,28 @@ const Leave: React.FC = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">Quản lý nghỉ phép</h1>
         <button
-          onClick={() => {/* TODO: Open create modal */}}
+          onClick={() => setShowCreateModal(true)}
           className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
         >
           <i className="fas fa-plus mr-2"></i>
           Tạo đơn nghỉ phép
         </button>
       </div>
+
+      <CreateLeaveModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSubmit={async (data) => {
+          try {
+            await LeaveService.createLeave(data);
+            await fetchLeaves();
+            setShowCreateModal(false);
+          } catch (err) {
+            console.error('Failed to create leave:', err);
+            throw err;
+          }
+        }}
+      />
 
       {error && (
         <div className="p-4 text-sm text-red-700 bg-red-100 rounded-lg">

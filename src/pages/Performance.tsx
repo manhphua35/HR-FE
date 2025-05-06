@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import CreatePlanModal from '../components/modals/CreatePlanModal';
 import CreateReviewModal from '../components/modals/CreateReviewModal';
-import ReviewDetailsModal from '../components/modals/ReviewDetailsModal';
+import EditReviewModal from '../components/modals/EditReviewModal';
 import { PerformancePlan, PerformanceReview } from '../types/api';
 import { PerformanceService } from '../services/PerformanceService';
 
@@ -38,14 +38,13 @@ const Performance: React.FC = () => {
   const [plans, setPlans] = useState<PerformancePlan[]>([]);
   const [reviews, setReviews] = useState<PerformanceReview[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<PerformancePlan | null>(null);
-  const [selectedReview, setSelectedReview] = useState<PerformanceReview | null>(null);
+  const [selectedReview, setSelectedReview] = useState<DepartmentReview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [departmentData, setDepartmentData] = useState<DepartmentPerformance[]>([]);
-
+  const [isEditReviewModalOpen, setIsEditReviewModalOpen] = useState(false);
   const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
   const [isCreateReviewModalOpen, setIsCreateReviewModalOpen] = useState(false);
-  const [isReviewDetailsModalOpen, setIsReviewDetailsModalOpen] = useState(false);
 
   const isManager = currentUser?.role?.roleType === 'DEPARTMENT_MANAGER';
   const isSystemAdmin = currentUser?.role?.roleType === 'SYSTEM_ADMIN';
@@ -115,6 +114,26 @@ const Performance: React.FC = () => {
     }
   };
 
+  const handleEditReview = async (reviewId: number, data: any) => {
+    try {
+      await PerformanceService.updateReview(reviewId, data);
+      fetchOverallPerformance();
+      setIsEditReviewModalOpen(false);
+    } catch (err) {
+      setError('Cập nhật đánh giá thất bại');
+    }
+  };
+
+  const handleDeleteReview = async (reviewId: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa đánh giá này?')) return;
+    try {
+      await PerformanceService.deleteReview(reviewId);
+      fetchOverallPerformance();
+    } catch (err) {
+      setError('Xóa đánh giá thất bại');
+    }
+  };
+
   if (loading) {
     return <div className="p-4">Đang tải...</div>;
   }
@@ -151,7 +170,8 @@ const Performance: React.FC = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhân viên</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kế hoạch</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày đánh giá</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Điểm số</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Điểm số</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -170,8 +190,27 @@ const Performance: React.FC = () => {
                             {new Date(review.reviewDate).toLocaleDateString()}
                           </div>
                         </td>
-                        <td className={`px-6 py-4 whitespace-nowrap text-right ${getScoreClass(review.totalScore)}`}>
+                        <td className={`px-6 py-4 whitespace-nowrap text-center ${getScoreClass(review.totalScore)}`}>
                           {formatScore(review.totalScore)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <button
+                            onClick={() => {
+                              setSelectedReview(review);
+                              setIsEditReviewModalOpen(true);
+                            }}
+                            className="text-yellow-600 hover:text-yellow-900 mx-2"
+                            title="Chỉnh sửa"
+                          >
+                            <i className="fas fa-edit"></i>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteReview(review.reviewId)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Xóa"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -277,13 +316,19 @@ const Performance: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
                             <button
-                              className="text-blue-600 hover:text-blue-900"
+                              className="text-yellow-600 hover:text-yellow-900"
                               onClick={() => {
-                                setSelectedReview(review);
-                                setIsReviewDetailsModalOpen(true);
+                                setSelectedReview({
+                                  reviewId: review.id,
+                                  employeeName: `Employee ${review.employeeId}`,
+                                  planTitle: selectedPlan.title,
+                                  reviewDate: review.reviewDate,
+                                  totalScore: averageScore.toString()
+                                });
+                                setIsEditReviewModalOpen(true);
                               }}
                             >
-                              Xem chi tiết
+                              Chỉnh sửa
                             </button>
                           </td>
                         </tr>
@@ -315,12 +360,26 @@ const Performance: React.FC = () => {
         />
       )}
 
-      {isReviewDetailsModalOpen && selectedReview && selectedPlan && (
-        <ReviewDetailsModal
-          isOpen={isReviewDetailsModalOpen}
-          onClose={() => setIsReviewDetailsModalOpen(false)}
+      {isEditReviewModalOpen && selectedReview && (
+        <EditReviewModal
+          isOpen={isEditReviewModalOpen}
+          onClose={() => setIsEditReviewModalOpen(false)}
           review={selectedReview}
-          criteria={selectedPlan.criteria}
+          criteria={selectedPlan?.criteria || []}
+          onSubmit={async (data: {
+            reviewDate: string;
+            scores: {
+              criteriaId: number;
+              score: number;
+              comment: string;
+            }[];
+            comments?: string;
+            strengths?: string;
+            weaknesses?: string;
+            improvement?: string;
+          }) => {
+            await handleEditReview(selectedReview.reviewId, data);
+          }}
         />
       )}
     </div>

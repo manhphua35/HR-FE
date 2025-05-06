@@ -1,7 +1,7 @@
 import axios from '../config/axios';
 import { PerformancePlan, PerformanceReview } from '../types/api';
 
-interface DepartmentReview {
+export interface DepartmentReview {
   reviewId: number;
   employeeName: string;
   planTitle: string;
@@ -9,12 +9,12 @@ interface DepartmentReview {
   totalScore: string;
 }
 
-interface DepartmentPerformance {
+export interface DepartmentPerformance {
   department: string;
   reviews: DepartmentReview[];
 }
 
-interface ApiResponse<T> {
+export interface ApiResponse<T> {
   success: boolean;
   data: T;
 }
@@ -40,6 +40,11 @@ export class PerformanceService {
     return data.data;
   }
 
+  static async getReviewDetails(reviewId: number): Promise<PerformanceReview> {
+    const { data } = await axios.get<ApiResponse<PerformanceReview>>(`/performance/reviews/${reviewId}`);
+    return data.data;
+  }
+
   static async createReview(data: {
     planId: number;
     employeeId: number;
@@ -56,5 +61,25 @@ export class PerformanceService {
   }): Promise<PerformanceReview> {
     const response = await axios.post<ApiResponse<PerformanceReview>>('/performance/reviews/create', data);
     return response.data.data;
+  }
+
+  static async updateReview(reviewId: number, data: {
+    reviewDate: string;
+    scores: {
+      criteriaId: number;
+      score: number;
+      comment: string;
+    }[];
+    comments?: string;
+    strengths?: string;
+    weaknesses?: string;
+    improvement?: string;
+  }): Promise<PerformanceReview> {
+    const response = await axios.put<ApiResponse<PerformanceReview>>(`/performance/reviews/${reviewId}`, data);
+    return response.data.data;
+  }
+
+  static async deleteReview(reviewId: number): Promise<void> {
+    await axios.delete(`/performance/reviews/${reviewId}`);
   }
 }
