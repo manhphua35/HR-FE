@@ -31,6 +31,8 @@ interface GetAllLeavesParams {
   endDate?: string;
   status?: LeaveStatus;
   type?: LeaveType;
+  userId?: number;
+  departmentId?: number;
 }
 
 interface ApiResponse<T> {
@@ -60,7 +62,7 @@ export const LeaveService = {
 
   async getMyLeaves(): Promise<LeaveRequest[]> {
     try {
-      const response = await axiosInstance.get<ApiResponse<LeaveRequest[]>>('/leaves');
+      const response = await axiosInstance.get<ApiResponse<LeaveRequest[]>>('/leaves/my-leaves');
       return response.data.data;
     } catch (error) {
       console.error('Error fetching my leaves:', error);
@@ -68,9 +70,42 @@ export const LeaveService = {
     }
   },
 
+  async getLeavesBySpecificDate(date: string, userId?: number, departmentId?: number): Promise<LeaveRequest[]> {
+    try {
+      const params = new URLSearchParams();
+      
+      params.append('date', date);
+      if (userId) params.append('userId', userId.toString());
+      if (departmentId) params.append('departmentId', departmentId.toString());
+      
+      const response = await axiosInstance.get<ApiResponse<LeaveRequest[]>>(`/leaves/by-date?${params.toString()}`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching leaves by specific date:', error);
+      throw error;
+    }
+  },
+
+  async getLeavesByMonth(year: number, month: number, userId?: number, departmentId?: number): Promise<LeaveRequest[]> {
+    try {
+      const params = new URLSearchParams();
+      
+      params.append('year', year.toString());
+      params.append('month', month.toString());
+      if (userId) params.append('userId', userId.toString());
+      if (departmentId) params.append('departmentId', departmentId.toString());
+      
+      const response = await axiosInstance.get<ApiResponse<LeaveRequest[]>>(`/leaves/by-month?${params.toString()}`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching leaves by month:', error);
+      throw error;
+    }
+  },
+
   async createLeave(data: CreateLeaveRequest): Promise<LeaveRequest> {
     try {
-      const response = await axiosInstance.post<ApiResponse<LeaveRequest>>('/leaves', data);
+      const response = await axiosInstance.post<ApiResponse<LeaveRequest>>('/leaves/create', data);
       return response.data.data;
     } catch (error) {
       console.error('Error creating leave:', error);
@@ -102,9 +137,12 @@ export const LeaveService = {
     }
   },
 
-  async approveLeave(id: number): Promise<LeaveRequest> {
+  async approveLeave(id: number, comment?: string): Promise<LeaveRequest> {
     try {
-      const response = await axiosInstance.put<ApiResponse<LeaveRequest>>(`/leaves/${id}/approve`);
+      const response = await axiosInstance.put<ApiResponse<LeaveRequest>>(`/leaves/${id}/status`, {
+        status: 'APPROVED',
+        comment
+      });
       return response.data.data;
     } catch (error) {
       console.error('Error approving leave:', error);
@@ -112,9 +150,16 @@ export const LeaveService = {
     }
   },
 
-  async rejectLeave(id: number): Promise<LeaveRequest> {
+  async rejectLeave(id: number, rejectionReason: string): Promise<LeaveRequest> {
     try {
-      const response = await axiosInstance.put<ApiResponse<LeaveRequest>>(`/leaves/${id}/reject`);
+      if (!rejectionReason) {
+        throw new Error('Rejection reason is required');
+      }
+      
+      const response = await axiosInstance.put<ApiResponse<LeaveRequest>>(`/leaves/${id}/status`, {
+        status: 'REJECTED',
+        rejectionReason
+      });
       return response.data.data;
     } catch (error) {
       console.error('Error rejecting leave:', error);

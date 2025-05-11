@@ -86,7 +86,7 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">Hiệu suất TB</p>
-              <h3 className="text-xl font-bold">{stats.overview.averagePerformance}%</h3>
+              <h3 className="text-xl font-bold">{stats.overview.averagePerformance.toFixed(2)}</h3>
             </div>
           </div>
         </div>
@@ -153,7 +153,7 @@ const AdminDashboard: React.FC = () => {
                     <td className="px-4 py-3 text-sm text-gray-900">{dept.employeeCount}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{dept.activeLeaves}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{dept.ongoingTrainings}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{dept.averagePerformance}%</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{dept.averagePerformance.toFixed(2)}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{formatCurrency(dept.totalSalary)}</td>
                   </tr>
                 ))}
@@ -165,88 +165,117 @@ const AdminDashboard: React.FC = () => {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Performance by Department */}
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-lg font-semibold mb-4">Hiệu suất theo phòng ban</h3>
-          <div className="space-y-4">
-            {stats.performanceStats.byDepartment.map((dept) => (
-              <div key={dept.department} className="flex items-center">
-                <span className="w-48 text-sm">{dept.department}</span>
-                <div className="flex-1">
-                  <div className="bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-blue-600 rounded-full h-2" 
-                      style={{ width: `${dept.score}%` }}
-                    ></div>
-                  </div>
-                </div>
-                <span className="ml-4 text-sm font-medium">{dept.score}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Training by Department */}
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-lg font-semibold mb-4">Đào tạo theo phòng ban</h3>
-          <div className="space-y-4">
-            {stats.trainingStats.byDepartment.map((dept) => (
-              <div key={dept.department} className="flex items-center">
-                <span className="w-48 text-sm">{dept.department}</span>
-                <div className="flex-1">
-                  <div className="bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-green-600 rounded-full h-2" 
-                      style={{ width: `${(dept.count / stats.trainingStats.total) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-                <span className="ml-4 text-sm font-medium">{dept.count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Leave by Department */}
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-lg font-semibold mb-4">Nghỉ phép theo phòng ban</h3>
-          <div className="space-y-4">
-            {stats.leaveStats.byDepartment.map((dept) => (
-              <div key={dept.department} className="flex items-center">
-                <span className="w-48 text-sm">{dept.department}</span>
-                <div className="flex-1">
-                  <div className="bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-yellow-600 rounded-full h-2" 
-                      style={{ width: `${(dept.count / stats.leaveStats.total) * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-                <span className="ml-4 text-sm font-medium">{dept.count}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Salary by Department */}
+        {/* Payroll by Department */}
         <div className="bg-white rounded-lg shadow p-4">
           <h3 className="text-lg font-semibold mb-4">Lương theo phòng ban</h3>
           <div className="space-y-4">
-            {stats.salaryStats.byDepartment.map((dept) => (
-              <div key={dept.department} className="flex items-center">
-                <span className="w-48 text-sm">{dept.department}</span>
+            {stats.payrollStats && stats.payrollStats.departmentBreakdown.map((dept) => (
+              <div key={dept.departmentName} className="flex items-center">
+                <span className="w-48 text-sm">{dept.departmentName}</span>
                 <div className="flex-1">
                   <div className="bg-gray-200 rounded-full h-2">
                     <div 
                       className="bg-indigo-600 rounded-full h-2" 
-                      style={{ width: `${(dept.amount / stats.salaryStats.total) * 100}%` }}
+                      style={{ 
+                        width: `${stats.payrollStats 
+                          ? (dept.totalSalary / stats.payrollStats.total) * 100 
+                          : 0}%` 
+                      }}
                     ></div>
                   </div>
                 </div>
-                <span className="ml-4 text-sm font-medium">{formatCurrency(dept.amount)}</span>
+                <span className="ml-4 text-sm font-medium">{formatCurrency(dept.totalSalary)}</span>
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Hiệu suất theo phòng ban */}
+        <div className="bg-white rounded-lg shadow p-4">
+          <h3 className="text-lg font-semibold mb-4">Hiệu suất theo phòng ban</h3>
+          <div className="space-y-4">
+            {stats.departmentStats.map((dept) => (
+              <div key={dept.departmentId} className="flex items-center">
+                <span className="w-48 text-sm">{dept.departmentName}</span>
+                <div className="flex-1">
+                  <div className="bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-blue-600 rounded-full h-2" 
+                      style={{ 
+                        width: `${(dept.averagePerformance / Math.max(...stats.departmentStats.map(d => d.averagePerformance))) * 100}%`
+                      }}
+                    ></div>
+                  </div>
+                </div>
+                <span className="ml-4 text-sm font-medium">{dept.averagePerformance.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Thống kê nhân sự */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Nhân viên theo phòng ban */}
+        <div className="bg-white rounded-lg shadow p-4">
+          <h3 className="text-lg font-semibold mb-4">Nhân viên theo phòng ban</h3>
+          <div className="space-y-4">
+            {stats.departmentStats.map((dept) => (
+              <div key={dept.departmentId} className="flex items-center">
+                <span className="w-48 text-sm">{dept.departmentName}</span>
+                <div className="flex-1">
+                  <div className="bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-green-600 rounded-full h-2" 
+                      style={{ 
+                        width: `${(dept.employeeCount / stats.overview.totalEmployees) * 100}%`
+                      }}
+                    ></div>
+                  </div>
+                </div>
+                <span className="ml-4 text-sm font-medium">{dept.employeeCount} nhân viên</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Tình trạng nghỉ phép và đào tạo */}
+        <div className="bg-white rounded-lg shadow p-4">
+          <h3 className="text-lg font-semibold mb-4">Tình trạng nghỉ phép và đào tạo</h3>
+          {(stats.leaveStats.total === 0 && stats.trainingStats.total === 0) ? (
+            <div className="text-center py-12 text-gray-500">
+              <i className="fas fa-info-circle mr-2"></i>
+              Không có nhân viên đang nghỉ phép hoặc đào tạo
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {stats.leaveStats.total > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2">Nghỉ phép ({stats.leaveStats.total})</h4>
+                  <div className="space-y-2">
+                    {stats.leaveStats.details.map((item, index) => (
+                      <div key={index} className="bg-yellow-50 p-2 rounded">
+                        {JSON.stringify(item)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {stats.trainingStats.total > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2">Đào tạo ({stats.trainingStats.total})</h4>
+                  <div className="space-y-2">
+                    {stats.trainingStats.details.map((item, index) => (
+                      <div key={index} className="bg-blue-50 p-2 rounded">
+                        {JSON.stringify(item)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

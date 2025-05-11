@@ -21,7 +21,7 @@ import NotFound from '../pages/NotFound';
 import Unauthorized from '../pages/Unauthorized';
 
 // Define roles type (matching backend response)
-type Role = 'SYSTEM_ADMIN' | 'HR_MANAGER' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
+type Role = 'SYSTEM_ADMIN' | 'HR_STAFF' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
 
 // Interface for route permissions
 interface RoutePermissions {
@@ -65,42 +65,42 @@ const AppRoutes = () => {
     {
       path: "/dashboard",
       element: <Dashboard />,
-      allowedRoles: ['SYSTEM_ADMIN', 'HR_MANAGER', 'DEPARTMENT_MANAGER', 'EMPLOYEE'] // Use backend role names
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE'] // Use backend role names
     },
     {
       path: "/employees",
       element: <Employees />,
-      allowedRoles: ['SYSTEM_ADMIN', 'HR_MANAGER', 'DEPARTMENT_MANAGER'] // Use backend role names
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER'] // Use backend role names
     },
     {
       path: "/departments",
       element: <Departments />,
-      allowedRoles: ['SYSTEM_ADMIN', 'HR_MANAGER'] // Use backend role names
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF'] // Use backend role names
     },
     {
       path: "/attendance",
       element: <Attendance />,
-      allowedRoles: ['SYSTEM_ADMIN', 'HR_MANAGER', 'DEPARTMENT_MANAGER', 'EMPLOYEE'] // Use backend role names
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE'] // Use backend role names
     },
     {
       path: "/performance",
       element: <Performance />,
-      allowedRoles: ['SYSTEM_ADMIN', 'HR_MANAGER', 'DEPARTMENT_MANAGER', 'EMPLOYEE'] // Use backend role names
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE'] // Use backend role names
     },
     {
       path: "/payroll",
       element: <Payroll />,
-      allowedRoles: ['SYSTEM_ADMIN', 'HR_MANAGER'] // Use backend role names
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF'] // Use backend role names
     },
     {
       path: "/leave",
       element: <Leave />,
-      allowedRoles: ['SYSTEM_ADMIN', 'HR_MANAGER', 'DEPARTMENT_MANAGER', 'EMPLOYEE'] // Use backend role names
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE'] // Use backend role names
     },
     {
       path: "/reports",
       element: <Reports />,
-      allowedRoles: ['SYSTEM_ADMIN', 'HR_MANAGER', 'DEPARTMENT_MANAGER'] // Use backend role names
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER'] // Use backend role names
     },
     {
       path: "/settings",
@@ -137,7 +137,9 @@ const AppRoutes = () => {
                 <div className="p-4">Đang kiểm tra quyền...</div>
               ) : isAuthenticated ? ( // Primary check: Is the user authenticated?
                 // If authenticated, THEN check role
-                currentUser && currentUser.role && route.allowedRoles.includes(currentUser.role.roleType) ? ( // Access nested role.roleType
+                currentUser && currentUser.role && 
+                  (route.allowedRoles.includes(currentUser.role.roleType as Role) || 
+                   (currentUser.role.roleType === 'HR_MANAGER' && route.allowedRoles.includes('HR_STAFF'))) ? ( // Xử lý cả HR_MANAGER
                   // Log success before rendering element
                   console.log(`[AppRoutes] Role match SUCCESS for ${route.path}. User role: ${currentUser.role.roleType}. Allowed: ${route.allowedRoles.join(', ')}`), // Access nested role.roleType
                   route.element // Authorized

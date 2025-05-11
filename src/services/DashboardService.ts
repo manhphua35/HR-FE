@@ -33,18 +33,28 @@ interface ScoreByDepartment {
 }
 
 interface AmountByDepartment {
-    department: string;
-    amount: number;
+  department: string;
+  amount: number;
+}
+
+interface PayrollDepartmentBreakdown {
+  departmentName: string;
+  totalSalary: number;
 }
 
 interface LeaveStats {
   total: number;
-  byDepartment: CountByDepartment[];
+  details: any[]; // Để trống nếu không có dữ liệu
 }
 
 interface TrainingStats {
   total: number;
-  byDepartment: CountByDepartment[];
+  details: any[]; // Để trống nếu không có dữ liệu
+}
+
+interface PayrollStats {
+  total: number;
+  departmentBreakdown: PayrollDepartmentBreakdown[];
 }
 
 interface PerformanceStats {
@@ -53,8 +63,8 @@ interface PerformanceStats {
 }
 
 interface SalaryStats {
-    total: number;
-    byDepartment: AmountByDepartment[];
+  total: number;
+  byDepartment: AmountByDepartment[];
 }
 
 // Interface chính cho toàn bộ response
@@ -63,10 +73,10 @@ interface DashboardData {
   departmentStats: DepartmentStatDetail[];
   leaveStats: LeaveStats;
   trainingStats: TrainingStats;
-  performanceStats: PerformanceStats;
-  salaryStats: SalaryStats;
+  payrollStats?: PayrollStats; // Thêm payrollStats để phù hợp với API response
+  performanceStats?: PerformanceStats; // Optional để tránh lỗi khi không có
+  salaryStats?: SalaryStats; // Optional để tránh lỗi khi không có
 }
-
 
 // --- Các interface cũ không còn dùng cho getDashboardData ---
 // interface DashboardStats { ... } // Đã thay bằng DashboardData
@@ -174,6 +184,8 @@ export type {
   AmountByDepartment,
   LeaveStats,
   TrainingStats,
+  PayrollStats,
+  PayrollDepartmentBreakdown,
   PerformanceStats,
   SalaryStats,
   DashboardData,

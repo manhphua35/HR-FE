@@ -5,6 +5,7 @@ import CreateReviewModal from '../components/modals/CreateReviewModal';
 import EditReviewModal from '../components/modals/EditReviewModal';
 import { PerformancePlan, PerformanceReview } from '../types/api';
 import { PerformanceService } from '../services/PerformanceService';
+import { DepartmentService, Department } from '../services/DepartmentService';
 
 interface DepartmentReview {
   reviewId: number;
@@ -36,35 +37,78 @@ const getScoreClass = (score: string | undefined) => {
 const Performance: React.FC = () => {
   const { currentUser } = useAuth();
   const [plans, setPlans] = useState<PerformancePlan[]>([]);
+  const [allDepartmentPlans, setAllDepartmentPlans] = useState<PerformancePlan[]>([]);
   const [reviews, setReviews] = useState<PerformanceReview[]>([]);
+  const [employeeReviews, setEmployeeReviews] = useState<PerformanceReview[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<PerformancePlan | null>(null);
   const [selectedReview, setSelectedReview] = useState<DepartmentReview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [departmentData, setDepartmentData] = useState<DepartmentPerformance[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [isEditReviewModalOpen, setIsEditReviewModalOpen] = useState(false);
   const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
   const [isCreateReviewModalOpen, setIsCreateReviewModalOpen] = useState(false);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
 
   const isManager = currentUser?.role?.roleType === 'DEPARTMENT_MANAGER';
   const isSystemAdmin = currentUser?.role?.roleType === 'SYSTEM_ADMIN';
+  const isHRStaff = currentUser?.role?.roleType === 'HR_STAFF';
+  const isAdmin = isSystemAdmin || isHRStaff;
+  const isRegularEmployee = !isManager && !isAdmin;
 
   useEffect(() => {
-    if (isSystemAdmin) {
-      fetchOverallPerformance();
-    } else {
-      fetchDepartmentPlans();
+    const loadInitialData = async () => {
+      try {
+        setLoading(true);
+        // Fetch departments
+        await fetchDepartments();
+        
+        if (isAdmin) {
+          // Admins see all departments
+          await fetchOverallPerformance();
+          await fetchAllDepartmentPlans();
+        } else if (isManager) {
+          // Department managers see their department
+          await fetchDepartmentPlans();
+        } else {
+          // Regular employees see their reviews
+          await fetchEmployeeReviews();
+        }
+        setLoading(false);
+      } catch (err) {
+        setError('Lấy dữ liệu hiệu suất thất bại');
+        setLoading(false);
+      }
+    };
+
+    loadInitialData();
+  }, [isAdmin, isManager]);
+
+  const fetchAllDepartmentPlans = async () => {
+    try {
+      const data = await PerformanceService.getAllDepartmentPlans();
+      setAllDepartmentPlans(data);
+    } catch (err) {
+      setError('Lấy kế hoạch hiệu suất thất bại');
     }
-  }, [isSystemAdmin]);
+  };
 
   const fetchDepartmentPlans = async () => {
     try {
       const data = await PerformanceService.getDepartmentPlans();
       setPlans(data);
-      setLoading(false);
     } catch (err) {
       setError('Lấy kế hoạch hiệu suất thất bại');
-      setLoading(false);
+    }
+  };
+
+  const fetchEmployeeReviews = async () => {
+    try {
+      const data = await PerformanceService.getEmployeeReviews();
+      setEmployeeReviews(data);
+    } catch (err) {
+      setError('Lấy đánh giá thất bại');
     }
   };
 
@@ -72,10 +116,8 @@ const Performance: React.FC = () => {
     try {
       const data = await PerformanceService.getOverallPerformance();
       setDepartmentData(data || []);
-      setLoading(false);
     } catch (err) {
       setError('Lấy dữ liệu hiệu suất thất bại');
-      setLoading(false);
     }
   };
 
@@ -88,17 +130,69 @@ const Performance: React.FC = () => {
     }
   };
 
-  const handleCreatePlan = async (data: Omit<PerformancePlan, 'id' | 'departmentId' | 'createdBy'>) => {
+  const fetchDepartments = async () => {
     try {
-      await PerformanceService.createPlan(data);
-      fetchDepartmentPlans();
-      setIsCreatePlanModalOpen(false);
+      const data = await DepartmentService.getDepartments();
+      console.log('Danh sách phòng ban từ API:', data);
+      setDepartments(data);
     } catch (err) {
-      setError('Tạo kế hoạch hiệu suất thất bại');
+      console.error('Lỗi khi lấy danh sách phòng ban:', err);
+      setError('Không thể tải danh sách phòng ban');
     }
   };
 
-  const handleCreateReview = async (data: Omit<PerformanceReview, 'id' | 'planId' | 'reviewerId'>) => {
+  const handleCreatePlan = async (data: Omit<PerformancePlan, 'id' | 'departmentId' | 'createdBy'>) => {
+    try {
+      if (isAdmin && !selectedDepartmentId) {
+        setError('Vui lòng chọn phòng ban');
+        return;
+      }
+
+      // Kiểm tra xem phải là admin và có chọn phòng ban hay không
+      const requestData = {
+        ...data,
+        departmentId: isAdmin ? selectedDepartmentId! : currentUser?.departmentId!
+      };
+      
+      console.log('Dữ liệu gửi đi khi tạo kế hoạch:', requestData);
+      
+      await PerformanceService.createPlan(requestData);
+      
+      if (isAdmin) {
+        fetchAllDepartmentPlans();
+        fetchOverallPerformance();
+      } else {
+        fetchDepartmentPlans();
+      }
+      
+      setIsCreatePlanModalOpen(false);
+      setSelectedDepartmentId(null);
+    } catch (err: any) {
+      console.error('Lỗi tạo kế hoạch:', err);
+      // Hiển thị thông báo lỗi từ API nếu có
+      if (err.response && err.response.data && err.response.data.message) {
+        setError(err.response.data.message);
+      } else {
+        setError('Tạo kế hoạch hiệu suất thất bại');
+      }
+    }
+  };
+
+  const handleCreateReview = async (data: {
+    employeeId: number;
+    reviewDate: string;
+    scores: {
+      criteriaId: number;
+      score: number;
+      comment: string;
+    }[];
+    comments?: string;
+    strengths?: string;
+    weaknesses?: string;
+    improvement?: string;
+    status?: string;
+    totalScore?: number;
+  }) => {
     try {
       if (!selectedPlan) return;
       
@@ -107,7 +201,12 @@ const Performance: React.FC = () => {
         planId: selectedPlan.id,
       });
       
-      fetchReviews(selectedPlan.id);
+      if (isAdmin) {
+        fetchOverallPerformance();
+      } else {
+        fetchReviews(selectedPlan.id);
+      }
+      
       setIsCreateReviewModalOpen(false);
     } catch (err) {
       setError('Tạo đánh giá thất bại');
@@ -117,7 +216,15 @@ const Performance: React.FC = () => {
   const handleEditReview = async (reviewId: number, data: any) => {
     try {
       await PerformanceService.updateReview(reviewId, data);
-      fetchOverallPerformance();
+      
+      if (isAdmin) {
+        fetchOverallPerformance();
+      } else if (isManager) {
+        selectedPlan && fetchReviews(selectedPlan.id);
+      } else {
+        fetchEmployeeReviews();
+      }
+      
       setIsEditReviewModalOpen(false);
     } catch (err) {
       setError('Cập nhật đánh giá thất bại');
@@ -128,10 +235,24 @@ const Performance: React.FC = () => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa đánh giá này?')) return;
     try {
       await PerformanceService.deleteReview(reviewId);
-      fetchOverallPerformance();
+      
+      if (isAdmin) {
+        fetchOverallPerformance();
+      } else if (isManager) {
+        selectedPlan && fetchReviews(selectedPlan.id);
+      } else {
+        fetchEmployeeReviews();
+      }
     } catch (err) {
       setError('Xóa đánh giá thất bại');
     }
+  };
+
+  const handleOpenCreatePlanModal = () => {
+    if (isAdmin && departments.length === 0) {
+      fetchDepartments(); // Tải lại phòng ban nếu cần
+    }
+    setIsCreatePlanModalOpen(true);
   };
 
   if (loading) {
@@ -146,20 +267,85 @@ const Performance: React.FC = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Quản lý hiệu suất</h1>
-        {isManager && (
+        {(isAdmin || isManager) && (
           <button
             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-            onClick={() => setIsCreatePlanModalOpen(true)}
+            onClick={handleOpenCreatePlanModal}
           >
-            Tạo kế hoạch
+            Tạo kế hoạch đánh giá
           </button>
         )}
       </div>
 
-      {isSystemAdmin && departmentData.length > 0 && (
+      {/* Admin View - All Departments */}
+      {isAdmin && (
         <div className="space-y-6">
+          <h2 className="text-xl font-semibold mb-4">Kế hoạch đánh giá theo phòng ban</h2>
+          <div className="bg-white rounded-lg shadow overflow-hidden mb-6">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phòng ban</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tiêu đề</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thời gian</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {allDepartmentPlans.map((plan) => (
+                  <tr key={plan.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{plan.department?.name || 'N/A'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{plan.title}</div>
+                      <div className="text-sm text-gray-500">{plan.description}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {new Date(plan.startDate).toLocaleDateString()} - {new Date(plan.endDate).toLocaleDateString()}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {new Date(plan.endDate) > new Date() ? (
+                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                          Đang diễn ra
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                          Đã kết thúc
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <button
+                        className="text-blue-500 hover:text-blue-700 mr-3"
+                        onClick={() => {
+                          setSelectedPlan(plan);
+                          setIsCreateReviewModalOpen(true);
+                        }}
+                        title="Thêm đánh giá"
+                      >
+                        <i className="fas fa-plus-circle"></i>
+                      </button>
+                      <button
+                        className="text-red-500 hover:text-red-700"
+                        onClick={() => {/* Handle delete plan */}}
+                        title="Xóa kế hoạch"
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h2 className="text-xl font-semibold mb-4">Đánh giá hiệu suất theo phòng ban</h2>
           {departmentData.map((dept) => (
-            <div key={dept.department} className="bg-white rounded-lg shadow overflow-hidden">
+            <div key={dept.department} className="bg-white rounded-lg shadow overflow-hidden mb-6">
               <div className="p-4 bg-gray-50 border-b">
                 <h2 className="text-xl font-semibold">{dept.department}</h2>
               </div>
@@ -222,7 +408,8 @@ const Performance: React.FC = () => {
         </div>
       )}
 
-      {!isSystemAdmin && (
+      {/* Department Manager View */}
+      {isManager && (
         <div className="space-y-6">
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
@@ -267,7 +454,7 @@ const Performance: React.FC = () => {
                       >
                         Xem đánh giá
                       </button>
-                      {isManager && new Date(plan.endDate) > new Date() && (
+                      {new Date(plan.endDate) > new Date() && (
                         <button
                           className="text-green-600 hover:text-green-900"
                           onClick={() => {
@@ -304,7 +491,7 @@ const Performance: React.FC = () => {
                       return (
                         <tr key={review.id}>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">ID: {review.employeeId}</div>
+                            <div className="text-sm text-gray-900">{review.employee?.fullName || `ID: ${review.employeeId}`}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">
@@ -316,11 +503,11 @@ const Performance: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
                             <button
-                              className="text-yellow-600 hover:text-yellow-900"
+                              className="text-yellow-600 hover:text-yellow-900 mr-3"
                               onClick={() => {
                                 setSelectedReview({
                                   reviewId: review.id,
-                                  employeeName: `Employee ${review.employeeId}`,
+                                  employeeName: review.employee?.fullName || `ID: ${review.employeeId}`,
                                   planTitle: selectedPlan.title,
                                   reviewDate: review.reviewDate,
                                   totalScore: averageScore.toString()
@@ -328,7 +515,13 @@ const Performance: React.FC = () => {
                                 setIsEditReviewModalOpen(true);
                               }}
                             >
-                              Chỉnh sửa
+                              <i className="fas fa-edit"></i>
+                            </button>
+                            <button
+                              className="text-red-600 hover:text-red-900"
+                              onClick={() => handleDeleteReview(review.id)}
+                            >
+                              <i className="fas fa-trash"></i>
                             </button>
                           </td>
                         </tr>
@@ -342,11 +535,84 @@ const Performance: React.FC = () => {
         </div>
       )}
 
+      {/* Regular Employee View */}
+      {isRegularEmployee && (
+        <div className="space-y-6">
+          <h2 className="text-xl font-semibold mb-4">Đánh giá hiệu suất của bạn</h2>
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kế hoạch</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Người đánh giá</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày đánh giá</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Điểm trung bình</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Chi tiết</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {employeeReviews.map((review) => {
+                  const averageScore = review.scores.reduce((acc, curr) => acc + curr.score, 0) / review.scores.length;
+                  return (
+                    <tr key={review.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{review.plan?.title || 'N/A'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{review.reviewer?.fullName || `ID: ${review.reviewerId}`}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">
+                          {new Date(review.reviewDate).toLocaleDateString()}
+                        </div>
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-center ${getScoreClass(averageScore.toString())}`}>
+                        {averageScore.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <button
+                          className="text-blue-600 hover:text-blue-900"
+                          onClick={() => {
+                            setSelectedReview({
+                              reviewId: review.id,
+                              employeeName: currentUser?.fullName || 'Bạn',
+                              planTitle: review.plan?.title || 'N/A',
+                              reviewDate: review.reviewDate,
+                              totalScore: averageScore.toString()
+                            });
+                            setIsEditReviewModalOpen(true);
+                          }}
+                        >
+                          <i className="fas fa-eye"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {employeeReviews.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                      Chưa có đánh giá nào
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {isCreatePlanModalOpen && (
         <CreatePlanModal
           isOpen={isCreatePlanModalOpen}
-          onClose={() => setIsCreatePlanModalOpen(false)}
+          onClose={() => {
+            setIsCreatePlanModalOpen(false);
+            setSelectedDepartmentId(null);
+          }}
           onSubmit={handleCreatePlan}
+          isAdmin={isAdmin}
+          departments={departments}
+          onSelectDepartment={(id) => setSelectedDepartmentId(id)}
         />
       )}
 
@@ -366,6 +632,7 @@ const Performance: React.FC = () => {
           onClose={() => setIsEditReviewModalOpen(false)}
           review={selectedReview}
           criteria={selectedPlan?.criteria || []}
+          isReadOnly={isRegularEmployee}
           onSubmit={async (data: {
             reviewDate: string;
             scores: {
@@ -378,7 +645,9 @@ const Performance: React.FC = () => {
             weaknesses?: string;
             improvement?: string;
           }) => {
-            await handleEditReview(selectedReview.reviewId, data);
+            if (!isRegularEmployee) {
+              await handleEditReview(selectedReview.reviewId, data);
+            }
           }}
         />
       )}

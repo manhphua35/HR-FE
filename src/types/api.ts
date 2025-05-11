@@ -76,7 +76,7 @@ export interface User {
   fullName: string;
   role: {
     id: number;
-    roleType: 'SYSTEM_ADMIN' | 'HR_MANAGER' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
+    roleType: 'SYSTEM_ADMIN' | 'HR_MANAGER' | 'HR_STAFF' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
     name: string;
     description: string;
   };
@@ -102,12 +102,21 @@ export interface PerformancePlan {
   endDate: string;
   departmentId: number;
   createdBy: number;
+  status: string;
   criteria: {
     id: number;
     name: string;
     weight: number;
     description: string;
   }[];
+  department?: {
+    id: number;
+    name: string;
+  };
+  creator?: {
+    id: number;
+    fullName: string;
+  };
 }
 
 export interface PerformanceReview {
@@ -115,16 +124,30 @@ export interface PerformanceReview {
   planId: number;
   employeeId: number;
   reviewerId: number;
-  reviewDate: string;
+  status: string;
   scores: {
     criteriaId: number;
     score: number;
     comment: string;
   }[];
-  comments?: string;
-  strengths?: string;
-  weaknesses?: string;
-  improvement?: string;
+  totalScore: number;
+  comments: string;
+  improvement: string;
+  strengths: string;
+  weaknesses: string;
+  reviewDate: string;
+  plan?: {
+    id: number;
+    title: string;
+  };
+  employee?: {
+    id: number;
+    fullName: string;
+  };
+  reviewer?: {
+    id: number;
+    fullName: string;
+  };
 }
 
 // Notification Types

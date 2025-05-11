@@ -25,12 +25,23 @@ export class PerformanceService {
     return data.data;
   }
 
+  static async getAllDepartmentPlans(): Promise<PerformancePlan[]> {
+    const { data } = await axios.get<ApiResponse<PerformancePlan[]>>('/performance/plans/all');
+    return data.data;
+  }
+
   static async getOverallPerformance(): Promise<DepartmentPerformance[]> {
     const { data } = await axios.get<ApiResponse<DepartmentPerformance[]>>('/performance/overall');
     return data.data;
   }
 
-  static async createPlan(data: Omit<PerformancePlan, 'id' | 'departmentId' | 'createdBy'>): Promise<PerformancePlan> {
+  static async getEmployeeReviews(): Promise<PerformanceReview[]> {
+    const { data } = await axios.get<ApiResponse<PerformanceReview[]>>('/performance/reviews/employee');
+    return data.data;
+  }
+
+  static async createPlan(data: Omit<PerformancePlan, 'id' | 'createdBy'> & { departmentId: number }): Promise<PerformancePlan> {
+    console.log('Dữ liệu gửi đến API khi tạo kế hoạch:', data);
     const response = await axios.post<ApiResponse<PerformancePlan>>('/performance/plans/create', data);
     return response.data.data;
   }
@@ -58,6 +69,8 @@ export class PerformanceService {
     strengths?: string;
     weaknesses?: string;
     improvement?: string;
+    status?: string;
+    totalScore?: number;
   }): Promise<PerformanceReview> {
     const response = await axios.post<ApiResponse<PerformanceReview>>('/performance/reviews/create', data);
     return response.data.data;

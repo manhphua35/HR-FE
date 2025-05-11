@@ -1,18 +1,17 @@
-import React from 'react';
-import { PayrollComponentWithUser } from '../../services/PayrollService';
-
-type ComponentType = 'ALLOWANCE' | 'DEDUCTION';
+import React, { useState, useEffect } from 'react';
+import { Payroll } from '../../services/PayrollService';
 
 interface Employee {
   id: number;
   fullName: string;
   baseSalary: string;
+  payrolls?: Payroll[];
 }
 
 interface PayrollComponentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => void; // Đổi type để chấp nhận userId
+  onSubmit: (data: any) => void;
   title: string;
   employees: Employee[];
   selectedEmployee: number | null;
@@ -28,28 +27,34 @@ const PayrollComponentModal: React.FC<PayrollComponentModalProps> = ({
   selectedEmployee,
   onSelectEmployee
 }) => {
-  const [formData, setFormData] = React.useState({
-    name: '',
+  const [formData, setFormData] = useState({
     amount: '',
-    type: 'ALLOWANCE' as ComponentType,
     description: ''
   });
+  const [selectedPayroll, setSelectedPayroll] = useState<number | null>(null);
+
+  // Reset form when modal is closed
+  useEffect(() => {
+    if (!isOpen) {
+      setFormData({
+        amount: '',
+        description: ''
+      });
+      setSelectedPayroll(null);
+    }
+  }, [isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
-      ...formData,
-      userId: selectedEmployee
+      amount: parseFloat(formData.amount),
+      description: formData.description,
+      payrollId: selectedPayroll
     });
-    // Reset form
-    setFormData({
-      name: '',
-      amount: '',
-      type: 'ALLOWANCE',
-      description: ''
-    });
-    onClose();
   };
+
+  // Lấy danh sách bảng lương của nhân viên được chọn
+  const employeePayrolls = employees.find(e => e.id === selectedEmployee)?.payrolls || [];
 
   if (!isOpen) return null;
 
@@ -92,23 +97,32 @@ const PayrollComponentModal: React.FC<PayrollComponentModalProps> = ({
                   </select>
                 </div>
 
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                    Tên khoản
-                  </label>
-                  <input
-                    id="name"
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
-                </div>
+                {selectedEmployee && (
+                  <div>
+                    <label htmlFor="payroll" className="block text-sm font-medium text-gray-700 mb-2">
+                      Chọn bảng lương
+                    </label>
+                    <select
+                      id="payroll"
+                      value={selectedPayroll || ''}
+                      onChange={(e) => setSelectedPayroll(Number(e.target.value))}
+                      className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                      required
+                    >
+                      <option value="">Chọn bảng lương</option>
+                      {/* Hiển thị các bảng lương của nhân viên đã chọn */}
+                      {employeePayrolls.map((payroll) => (
+                        <option key={payroll.id} value={payroll.id}>
+                          Tháng {payroll.month}/{payroll.year}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div>
                   <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
-                    Số tiền
+                    Số tiền thưởng
                   </label>
                   <input
                     id="amount"
@@ -123,23 +137,8 @@ const PayrollComponentModal: React.FC<PayrollComponentModalProps> = ({
                 </div>
 
                 <div>
-                  <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-2">
-                    Loại
-                  </label>
-                  <select
-                    id="type"
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value as ComponentType })}
-                    className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="ALLOWANCE">Phụ cấp</option>
-                    <option value="DEDUCTION">Khấu trừ</option>
-                  </select>
-                </div>
-
-                <div>
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                    Mô tả
+                    Ghi chú
                   </label>
                   <textarea
                     id="description"

@@ -131,6 +131,39 @@ export const AttendanceService = {
     }
   },
 
+  getAttendanceHistoryByDay: async (days: number = 30, userId?: number, departmentId?: number): Promise<AttendanceRecord[]> => {
+    const queryParams = new URLSearchParams();
+    
+    if (days) queryParams.append('days', String(days));
+    if (userId) queryParams.append('userId', String(userId));
+    if (departmentId) queryParams.append('departmentId', String(departmentId));
+
+    try {
+      const response = await axiosInstance.get(`/attendances/history/day?${queryParams.toString()}`);
+      return response.data as AttendanceRecord[];
+    } catch (error) {
+      console.error('Error fetching attendance history by day:', error);
+      throw new Error('Không thể lấy lịch sử chấm công theo ngày');
+    }
+  },
+
+  getAttendanceHistoryByMonth: async (year: number, month: number, userId?: number, departmentId?: number): Promise<AttendanceRecord[]> => {
+    const queryParams = new URLSearchParams();
+    
+    queryParams.append('year', String(year));
+    queryParams.append('month', String(month));
+    if (userId) queryParams.append('userId', String(userId));
+    if (departmentId) queryParams.append('departmentId', String(departmentId));
+
+    try {
+      const response = await axiosInstance.get(`/attendances/history/month?${queryParams.toString()}`);
+      return response.data as AttendanceRecord[];
+    } catch (error) {
+      console.error('Error fetching attendance history by month:', error);
+      throw new Error('Không thể lấy lịch sử chấm công theo tháng');
+    }
+  },
+
   getStatusDisplay: (status: AttendanceStatus): string => {
     return displayStatus[status] || status;
   },
@@ -162,5 +195,21 @@ export const AttendanceService = {
   checkOut: async (notes?: string): Promise<AttendanceRecord> => {
     const response = await axiosInstance.post<ApiResponse<AttendanceRecord>>('/attendances/check-out', { notes });
     return response.data.data;
+  },
+
+  getAttendanceBySpecificDate: async (date: string, userId?: number, departmentId?: number): Promise<AttendanceRecord[]> => {
+    const queryParams = new URLSearchParams();
+    
+    queryParams.append('date', date);
+    if (userId) queryParams.append('userId', String(userId));
+    if (departmentId) queryParams.append('departmentId', String(departmentId));
+
+    try {
+      const response = await axiosInstance.get(`/attendances/by-date?${queryParams.toString()}`);
+      return response.data as AttendanceRecord[];
+    } catch (error) {
+      console.error('Error fetching attendance by specific date:', error);
+      throw new Error('Không thể lấy dữ liệu chấm công cho ngày đã chọn');
+    }
   }
 };
