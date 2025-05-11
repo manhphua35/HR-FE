@@ -124,46 +124,44 @@ export class DashboardService {
 
   // Updated to accept month and year parameters and return the new DashboardData type
   static async getDashboardData(month: number, year: number): Promise<DashboardData> {
-    // Call the correct endpoint using axiosInstance with query parameters
-    // Thay đổi kiểu mong đợi thành DashboardData
-    const response = await axiosInstance.get<DashboardData>(
-      '/reports/dashboard-data',
-      {
-        params: { month, year } // Pass month and year as query params
-      }
-    );
-    // Giả định API trả về trực tiếp đối tượng DashboardStats, không có wrapper ApiResponse
-    // Trả về response.data trực tiếp
-    return response.data;
+    try {
+      const response = await axiosInstance.get<ApiResponse<DashboardData>>(
+        '/reports/dashboard-data',
+        {
+          params: { month, year }
+        }
+      );
+      
+      // Trả về data từ wrapper object
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      throw error;
+    }
   }
 
   // Updated other methods to use axiosInstance for consistency
   // Note: Endpoints for these might also need verification against backend routes
   // TODO: Xác minh kiểu trả về thực tế cho getHrStats nếu endpoint /dashboard/hr tồn tại và khác /reports/dashboard-data
-  static async getHrStats(): Promise<any> { // Tạm thời dùng any, cần xác minh kiểu trả về
-    const response = await axiosInstance.get<any>(
-      '/dashboard/hr' // Keep endpoint for now, verify later if needed
+  static async getHrStats(): Promise<any> {
+    const response = await axiosInstance.get<ApiResponse<any>>(
+      '/dashboard/hr'
     );
-    // Giả định API trả về trực tiếp, không có wrapper
-    return response.data;
+    return response.data.data;
   }
 
   static async getDepartmentStats(departmentId: string): Promise<DepartmentStats> {
-    // Thay đổi kiểu mong đợi từ ApiResponse<DepartmentStats> thành DepartmentStats
-    const response = await axiosInstance.get<DepartmentStats>(
-      `/dashboard/department/${departmentId}` // Keep endpoint for now, verify later if needed
+    const response = await axiosInstance.get<ApiResponse<DepartmentStats>>(
+      `/dashboard/department/${departmentId}`
     );
-    // Giả định API trả về trực tiếp, không có wrapper
-    return response.data;
+    return response.data.data;
   }
 
   static async getEmployeeStats(employeeId: string): Promise<EmployeeStats> {
-    // Thay đổi kiểu mong đợi từ ApiResponse<EmployeeStats> thành EmployeeStats
-    const response = await axiosInstance.get<EmployeeStats>(
-      `/dashboard/employee/${employeeId}` // Keep endpoint for now, verify later if needed
+    const response = await axiosInstance.get<ApiResponse<EmployeeStats>>(
+      `/dashboard/employee/${employeeId}`
     );
-    // Giả định API trả về trực tiếp, không có wrapper
-    return response.data;
+    return response.data.data;
   }
 
   // Commented out as no corresponding backend endpoint was found

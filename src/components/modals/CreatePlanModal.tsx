@@ -96,6 +96,9 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({
       
       if (!value) {
         setSelectedDepartmentId(null);
+        if (onSelectDepartment) {
+          onSelectDepartment(null as any);
+        }
         return;
       }
       
@@ -106,14 +109,25 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({
       if (isNaN(deptId)) {
         console.error('ID phòng ban không hợp lệ:', value);
         setSelectedDepartmentId(null);
+        if (onSelectDepartment) {
+          onSelectDepartment(null as any);
+        }
         return;
       }
       
       console.log('Đã chọn phòng ban ID:', deptId);
       setSelectedDepartmentId(deptId);
+      
+      // Gọi callback ngay khi người dùng chọn phòng ban
+      if (onSelectDepartment) {
+        onSelectDepartment(deptId);
+      }
     } catch (error) {
       console.error('Lỗi khi chọn phòng ban:', error);
       setSelectedDepartmentId(null);
+      if (onSelectDepartment) {
+        onSelectDepartment(null as any);
+      }
     }
   };
 

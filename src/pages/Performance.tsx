@@ -143,15 +143,31 @@ const Performance: React.FC = () => {
 
   const handleCreatePlan = async (data: Omit<PerformancePlan, 'id' | 'departmentId' | 'createdBy'>) => {
     try {
-      if (isAdmin && !selectedDepartmentId) {
-        setError('Vui lòng chọn phòng ban');
+      console.log('Selected Department ID:', selectedDepartmentId);
+      console.log('Is Admin:', isAdmin);
+      console.log('Current User Department:', currentUser?.departmentId);
+
+      let departmentId = currentUser?.departmentId;
+      
+      if (isAdmin) {
+        if (!selectedDepartmentId) {
+          console.error('No department selected for admin');
+          setError('Vui lòng chọn phòng ban');
+          return;
+        }
+        departmentId = selectedDepartmentId;
+      }
+
+      // Kiểm tra lại một lần nữa
+      if (!departmentId) {
+        console.error('No valid department ID found');
+        setError('Không tìm thấy ID phòng ban hợp lệ');
         return;
       }
 
-      // Kiểm tra xem phải là admin và có chọn phòng ban hay không
       const requestData = {
         ...data,
-        departmentId: isAdmin ? selectedDepartmentId! : currentUser?.departmentId!
+        departmentId: departmentId
       };
       
       console.log('Dữ liệu gửi đi khi tạo kế hoạch:', requestData);
@@ -169,7 +185,6 @@ const Performance: React.FC = () => {
       setSelectedDepartmentId(null);
     } catch (err: any) {
       console.error('Lỗi tạo kế hoạch:', err);
-      // Hiển thị thông báo lỗi từ API nếu có
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
       } else {
