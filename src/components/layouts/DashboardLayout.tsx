@@ -49,11 +49,11 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
       path: '/training',
       icon: 'fas fa-graduation-cap'
     },
-    {
-      name: 'Báo cáo',
-      path: '/reports',
-      icon: 'fas fa-chart-bar'
-    },
+    // {
+    //   name: 'Báo cáo',
+    //   path: '/reports',
+    //   icon: 'fas fa-chart-bar'
+    // },
     {
       name: 'Cài đặt',
       path: '/settings',

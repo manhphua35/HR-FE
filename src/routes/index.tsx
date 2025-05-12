@@ -14,7 +14,7 @@ import Attendance from '../pages/Attendance';
 import Performance from '../pages/Performance';
 import Payroll from '../pages/Payroll';
 import Leave from '../pages/Leave';
-import Reports from '../pages/Reports';
+// import Reports from '../pages/Reports';
 import Settings from '../pages/Settings';
 import Login from '../pages/Login';
 import NotFound from '../pages/NotFound';
@@ -99,11 +99,11 @@ const AppRoutes = () => {
       element: <Leave />,
       allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE'] // Use backend role names
     },
-    {
-      path: "/reports",
-      element: <Reports />,
-      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER'] // Use backend role names
-    },
+    // {
+    //   path: "/reports",
+    //   element: <Reports />,
+    //   allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER'] // Use backend role names
+    // },
     {
       path: "/settings",
       element: <Settings />,
