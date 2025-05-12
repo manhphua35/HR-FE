@@ -178,7 +178,7 @@ export const ReportService = {
       
       pdf.setFontSize(10);
       pdf.setTextColor(100, 100, 100);
-      const today = new Date().toLocaleDateString('vi-VN');
+      const today = new Date().toLocaleDateString('vi-VN'); 
       pdf.text(`Ngày xuất báo cáo: ${today}`, pdf.internal.pageSize.getWidth() / 2, 35, { align: 'center' });
       
       pdf.setFontSize(10);

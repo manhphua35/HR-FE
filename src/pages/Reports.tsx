@@ -5,6 +5,16 @@ import { format, subMonths } from 'date-fns';
 import { saveAs } from 'file-saver';
 import { User } from '../types/api';
 import axios from '../config/axios';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+// Comment out không import docx: import { Document, Packer, Paragraph, Table, TableCell, TableRow, HeadingLevel, TextRun, BorderStyle, WidthType, AlignmentType } from 'docx';
+
+// Mở rộng interface cho TypeScript để hỗ trợ autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => any;
+  }
+}
 
 interface Department {
   id: number;
@@ -17,6 +27,23 @@ interface DepartmentResponse {
   data: Department[];
 }
 
+// Thêm interface để định nghĩa kiểu dữ liệu cho hrCostStats
+interface HRCostStat {
+  department: string;
+  totalEmployees: number;
+  totalCost: number;
+  averageCost: number;
+}
+
+interface DepartmentReport {
+  reportDate: string;
+  totalEmployees: number;
+  newEmployees: number;
+  totalLeaves: number;
+  totalSalary: number;
+  averagePerformanceRating?: number;
+}
+
 const Reports: React.FC = () => {
   const { currentUser } = useAuth();
   const [startDate, setStartDate] = useState(format(subMonths(new Date(), 1), 'yyyy-MM-dd'));
@@ -27,10 +54,12 @@ const Reports: React.FC = () => {
   const [exportLoading, setExportLoading] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loadingDepartments, setLoadingDepartments] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successModalMessage, setSuccessModalMessage] = useState('');
 
   // State for new report data
-  const [departmentReports, setDepartmentReports] = useState<any[] | null>(null);
-  const [hrCostStats, setHrCostStats] = useState<any | null>(null);
+  const [departmentReports, setDepartmentReports] = useState<DepartmentReport[] | null>(null);
+  const [hrCostStats, setHrCostStats] = useState<HRCostStat[] | null>(null);
   const [dashboardData, setDashboardData] = useState<any | null>(null);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
   const [companyReports, setCompanyReports] = useState<any[] | null>(null);
@@ -82,19 +111,15 @@ const Reports: React.FC = () => {
 
       // Nếu là HR hoặc Admin và không chọn phòng ban cụ thể, lấy báo cáo toàn công ty
       if (isHrOrAdmin && !hasSelectedDepartment) {
-        console.log("Đang tải báo cáo toàn công ty");
         promises.push(
           ReportService.getDepartmentReports(undefined, deptParams)
             .then(data => {
               if (Array.isArray(data) && data.length > 0) {
-                console.log("Company Reports data:", data);
                 setCompanyReports(data);
               } else {
-                console.log("Không có dữ liệu báo cáo toàn công ty");
               }
             })
             .catch(err => {
-              console.error("Lấy báo cáo toàn công ty thất bại:", err);
               setError(prev => prev + "\nLấy báo cáo toàn công ty thất bại.");
             })
         );
@@ -181,31 +206,273 @@ const Reports: React.FC = () => {
         dashboardData,
         companyReports
       });
-      
-      const reportData = {
-        title: `Báo cáo từ ${startDate} đến ${endDate}`,
-        generatedAt: new Date().toISOString(),
-        departmentReports,
-        hrCostStats,
-        dashboardData,
-        companyReports,
-        userInfo: {
-          name: currentUser?.fullName || '',
-          role: currentUser?.role ? currentUser.role.name : '',
-          department: currentUser?.departmentId ? String(currentUser.departmentId) : ''
-        }
-      };
-      
-      // Xuất báo cáo dạng PDF
-      const pdfBlob = await ReportService.exportReportAsPDF(reportData);
-      console.log("Đã tạo PDF thành công, kích thước:", pdfBlob.size);
-      saveAs(pdfBlob, `bao-cao-nhan-su-${format(new Date(), 'dd-MM-yyyy')}.pdf`);
+
+      // Xuất báo cáo PDF
+      exportReportWithJsPDF();
       
       setExportLoading(false);
     } catch (error: any) {
       console.error("Xuất báo cáo thất bại:", error);
       setError(`Xuất báo cáo thất bại: ${error.message || "Lỗi không xác định"}. Vui lòng thử lại sau.`);
       setExportLoading(false);
+    }
+  };
+
+  // Hàm mới sử dụng jsPDF và jsPDF-AutoTable để xuất PDF
+  const exportReportWithJsPDF = () => {
+    try {
+      // Khởi tạo tài liệu PDF
+      const doc = new jsPDF();
+      // Đăng ký plugin autoTable một cách rõ ràng
+      if (typeof doc.autoTable !== 'function') {
+        (doc as any).autoTable = autoTable;
+      }
+      
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const textColor = '#333333';
+      let yOffset = 20; // vị trí bắt đầu
+      
+      // Thêm tiêu đề báo cáo
+      doc.setFontSize(18);
+      doc.setTextColor(textColor);
+      doc.text(`Báo cáo từ ${startDate} đến ${endDate}`, pageWidth / 2, yOffset, { align: 'center' });
+      yOffset += 10;
+      
+      // Thêm thông tin người tạo báo cáo
+      doc.setFontSize(12);
+      doc.text(`Người tạo: ${currentUser?.fullName || 'N/A'}`, 14, yOffset);
+      doc.text(`Ngày tạo: ${new Date().toLocaleDateString('vi-VN')}`, pageWidth - 14, yOffset, { align: 'right' });
+      yOffset += 10;
+
+      // 1. Thêm bảng HR Cost Statistics nếu có dữ liệu
+      if (hrCostStats && hrCostStats.length > 0) {
+        doc.setFontSize(14);
+        doc.text('Thống kê chi phí nhân sự', 14, yOffset);
+        yOffset += 8;
+        
+        // Chuẩn bị dữ liệu bảng
+        const headers = [['Phòng ban', 'Số nhân viên', 'Tổng chi phí', 'Chi phí trung bình']];
+        const data = hrCostStats.map((stat: HRCostStat) => [
+          stat.department || 'N/A',
+          stat.totalEmployees || 0,
+          new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(stat.totalCost || 0),
+          new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(stat.averageCost || 0)
+        ]);
+        
+        // Sử dụng autoTable và lưu lastAutoTable.finalY
+        autoTable(doc, {
+          startY: yOffset,
+          head: headers,
+          body: data,
+          theme: 'striped',
+          headStyles: { fillColor: [66, 139, 202], textColor: 255 },
+          styles: { overflow: 'linebreak', cellWidth: 'auto' },
+          columnStyles: {
+            0: { cellWidth: 70 },
+            1: { cellWidth: 30, halign: 'right' },
+            2: { cellWidth: 50, halign: 'right' },
+            3: { cellWidth: 50, halign: 'right' }
+          }
+        });
+        
+        // Lấy vị trí cuối của bảng
+        const finalY = (doc as any).lastAutoTable?.finalY || yOffset + 20;
+        yOffset = finalY + 15;
+      }
+
+      // 2. Thêm bảng Department Reports nếu có dữ liệu
+      if (departmentReports && departmentReports.length > 0) {
+        // Kiểm tra xem đã đến cuối trang chưa, nếu gần hết trang thì tạo trang mới
+        if (yOffset > 220) {
+          doc.addPage();
+          yOffset = 20;
+        }
+        
+        doc.setFontSize(14);
+        doc.text('Báo cáo phòng ban', 14, yOffset);
+        yOffset += 8;
+        
+        const headers = [['Ngày báo cáo', 'Tổng nhân viên', 'Nhân viên mới', 'Tổng ngày nghỉ', 'Tổng lương', 'Điểm đánh giá TB']];
+        const data = departmentReports.map((report: DepartmentReport) => [
+          report.reportDate ? new Date(report.reportDate).toLocaleDateString('vi-VN') : 'N/A',
+          report.totalEmployees || 0,
+          report.newEmployees || 0,
+          report.totalLeaves || 0,
+          new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(report.totalSalary || 0),
+          typeof report.averagePerformanceRating === 'number' ? report.averagePerformanceRating.toFixed(2) : 'N/A'
+        ]);
+        
+        autoTable(doc, {
+          startY: yOffset,
+          head: headers,
+          body: data,
+          theme: 'striped',
+          headStyles: { fillColor: [76, 175, 80], textColor: 255 },
+          styles: { overflow: 'linebreak', cellWidth: 'auto' }
+        });
+        
+        const finalY = (doc as any).lastAutoTable?.finalY || yOffset + 20;
+        yOffset = finalY + 15;
+      }
+
+      // 3. Thêm bảng Dashboard Data nếu có dữ liệu
+      if (dashboardData && dashboardData.departments && dashboardData.departments.length > 0) {
+        // Tạo trang mới nếu cần
+        if (yOffset > 220) {
+          doc.addPage();
+          yOffset = 20;
+        }
+        
+        doc.setFontSize(14);
+        doc.text('Thống kê theo phòng ban', 14, yOffset);
+        yOffset += 8;
+        
+        // Hiển thị summary trước
+        if (dashboardData.summary) {
+          const summaryData = [
+            ['Tổng nhân viên', dashboardData.summary.totalEmployees || 0],
+            ['Đơn nghỉ phép hoạt động', dashboardData.summary.activeLeaves || 0],
+            ['Tổng lương', new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(dashboardData.summary.totalSalary || 0)]
+          ];
+          
+          autoTable(doc, {
+            startY: yOffset,
+            body: summaryData,
+            theme: 'plain',
+            styles: { overflow: 'linebreak', cellWidth: 'auto' }
+          });
+          
+          const finalY = (doc as any).lastAutoTable?.finalY || yOffset + 10;
+          yOffset = finalY + 10;
+        }
+        
+        // Hiển thị bảng departments
+        const headers = [['Phòng ban', 'Số nhân viên', 'Đơn nghỉ phép', 'Khóa đào tạo', 'Điểm đánh giá TB', 'Tổng lương']];
+        const data = dashboardData.departments.map((dept: any) => [
+          dept.department || 'N/A',
+          dept.employeeCount || 0,
+          dept.leaveCount || 0,
+          dept.trainingCount || 0,
+          (typeof dept.avgPerformance === 'number' ? dept.avgPerformance.toFixed(2) : 'N/A'),
+          new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(dept.totalSalary || 0)
+        ]);
+        
+        autoTable(doc, {
+          startY: yOffset,
+          head: headers,
+          body: data,
+          theme: 'striped',
+          headStyles: { fillColor: [156, 39, 176], textColor: 255 },
+          styles: { overflow: 'linebreak', cellWidth: 'auto' }
+        });
+        
+        const finalY = (doc as any).lastAutoTable?.finalY || yOffset + 20;
+        yOffset = finalY + 15;
+      }
+
+      // 4. Thêm bảng Company Reports nếu có dữ liệu
+      if (companyReports && companyReports.length > 0) {
+        // Tạo trang mới vì bảng này thường lớn
+        doc.addPage();
+        yOffset = 20;
+        
+        doc.setFontSize(14);
+        doc.text('Báo cáo toàn công ty', 14, yOffset);
+        yOffset += 8;
+        
+        const headers = [['Phòng ban', 'Tổng nhân viên', 'NV mới', 'NV nghỉ việc', 'Ngày nghỉ', 'Lương cơ bản', 'Phụ cấp', 'Khấu trừ', 'Thực lãnh', 'Giờ đào tạo', 'Điểm TB']];
+        const data = companyReports.map((report: any) => {
+          const departmentName = report.departmentName || `Phòng ban ${report.departmentId || 'N/A'}`;
+          const totalNetSalary = (report.totalSalary || 0) + (report.totalAllowances || 0) - (report.totalDeductions || 0);
+          
+          return [
+            departmentName,
+            report.totalEmployees || 0,
+            report.newEmployees || 0,
+            report.resignedEmployees || 0,
+            report.totalLeaves || 0,
+            new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(report.totalSalary || 0),
+            new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(report.totalAllowances || 0),
+            new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(report.totalDeductions || 0),
+            new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalNetSalary),
+            report.totalTrainingHours || 0,
+            typeof report.averagePerformanceRating === 'number' ? report.averagePerformanceRating.toFixed(2) : 'N/A'
+          ];
+        });
+        
+        // Thêm dòng tổng cộng
+        const totalRow = [
+          'Tổng cộng',
+          companyReports.reduce((sum, r) => sum + (r.totalEmployees || 0), 0),
+          companyReports.reduce((sum, r) => sum + (r.newEmployees || 0), 0),
+          companyReports.reduce((sum, r) => sum + (r.resignedEmployees || 0), 0),
+          companyReports.reduce((sum, r) => sum + (r.totalLeaves || 0), 0),
+          new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+            companyReports.reduce((sum, r) => sum + (r.totalSalary || 0), 0)
+          ),
+          new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+            companyReports.reduce((sum, r) => sum + (r.totalAllowances || 0), 0)
+          ),
+          new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+            companyReports.reduce((sum, r) => sum + (r.totalDeductions || 0), 0)
+          ),
+          new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+            companyReports.reduce((sum, r) => sum + ((r.totalSalary || 0) + (r.totalAllowances || 0) - (r.totalDeductions || 0)), 0)
+          ),
+          companyReports.reduce((sum, r) => sum + (r.totalTrainingHours || 0), 0),
+          companyReports.length > 0
+            ? (companyReports.reduce((sum, r) => sum + (typeof r.averagePerformanceRating === 'number' ? r.averagePerformanceRating : 0), 0) / companyReports.length).toFixed(2)
+            : 'N/A'
+        ];
+        data.push(totalRow);
+        
+        autoTable(doc, {
+          startY: yOffset,
+          head: headers,
+          body: data,
+          theme: 'striped',
+          headStyles: { fillColor: [33, 150, 243], textColor: 255 },
+          styles: { overflow: 'linebreak', fontSize: 8, cellPadding: 2 },
+          didDrawCell: (data: any) => {
+            // Highlight tổng cộng row
+            if (data.row.index === data.table.body.length - 1) {
+              doc.setFillColor(240, 240, 240);
+              doc.setTextColor(0, 0, 0);
+              doc.setFont(doc.getFont().fontName, 'bold');
+            }
+          }
+        });
+      }
+
+      // Thêm footer
+      let totalPages;
+      try {
+        totalPages = (doc as any).internal.getNumberOfPages();
+      } catch (e) {
+        totalPages = doc.getNumberOfPages ? doc.getNumberOfPages() : 1;
+      }
+      
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(10);
+        doc.setTextColor(150);
+        doc.text(
+          `Trang ${i} / ${totalPages} - Được tạo bởi hệ thống HR Dashboard`,
+          pageWidth / 2, 
+          doc.internal.pageSize.getHeight() - 10,
+          { align: 'center' }
+        );
+      }
+
+      // Lưu file
+      doc.save(`bao-cao-nhan-su-${format(new Date(), 'dd-MM-yyyy')}.pdf`);
+      
+      // Hiển thị modal thành công thay vì alert
+      setSuccessModalMessage('Xuất báo cáo PDF thành công!');
+      setShowSuccessModal(true);
+    } catch (error: any) {
+      console.error("Lỗi khi tạo PDF:", error);
+      throw new Error(`Không thể tạo file PDF: ${error.message}`);
     }
   };
 
@@ -333,7 +600,7 @@ const Reports: React.FC = () => {
             </button>
           )}
           
-          {/* Nút xuất báo cáo */}
+          {/* Nút xuất báo cáo PDF */}
           {(departmentReports || hrCostStats || dashboardData) && (
             <button
               onClick={handleExport}
@@ -348,7 +615,7 @@ const Reports: React.FC = () => {
               ) : (
                 <>
                   <i className="fas fa-download mr-2"></i>
-                  Xuất báo cáo
+                  Xuất báo cáo PDF
                 </>
               )}
             </button>
@@ -404,7 +671,7 @@ const Reports: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {hrCostStats.map((stat: any, index: number) => (
+                    {hrCostStats.map((stat: HRCostStat, index: number) => (
                       <tr key={index} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{stat.department}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{stat.totalEmployees}</td>
@@ -435,9 +702,9 @@ const Reports: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {departmentReports.map((report: any) => (
-                      <tr key={report.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{new Date(report.reportDate).toLocaleDateString('vi-VN')}</td>
+                    {departmentReports.map((report: DepartmentReport) => (
+                      <tr key={report.reportDate} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.reportDate ? new Date(report.reportDate).toLocaleDateString('vi-VN') : 'N/A'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.totalEmployees}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.newEmployees}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.totalLeaves}</td>
@@ -462,15 +729,15 @@ const Reports: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="bg-blue-50 p-4 rounded-lg shadow-sm">
                   <div className="text-sm text-blue-600 mb-1">Tổng nhân viên</div>
-                  <div className="text-2xl font-bold">{dashboardData.overview.totalEmployees}</div>
+                  <div className="text-2xl font-bold">{dashboardData.summary.totalEmployees}</div>
                 </div>
                 <div className="bg-green-50 p-4 rounded-lg shadow-sm">
                   <div className="text-sm text-green-600 mb-1">Đơn nghỉ phép hoạt động</div>
-                  <div className="text-2xl font-bold">{dashboardData.overview.activeLeaves}</div>
+                  <div className="text-2xl font-bold">{dashboardData.summary.activeLeaves}</div>
                 </div>
                 <div className="bg-purple-50 p-4 rounded-lg shadow-sm">
                   <div className="text-sm text-purple-600 mb-1">Tổng lương</div>
-                  <div className="text-2xl font-bold">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(dashboardData.overview.totalSalary)}</div>
+                  <div className="text-2xl font-bold">{dashboardData.summary.totalSalary ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(dashboardData.summary.totalSalary) : "0 ₫"}</div>
                 </div>
               </div>
               
@@ -488,14 +755,14 @@ const Reports: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {dashboardData.departmentStats.map((dept: any) => (
-                      <tr key={dept.departmentId} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{dept.departmentName}</td>
+                    {dashboardData.departments.map((dept: any) => (
+                      <tr key={dept.department} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{dept.department}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{dept.employeeCount}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{dept.activeLeaves}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{dept.ongoingTrainings}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{dept.averagePerformance.toFixed(2)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(dept.totalSalary)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{dept.leaveCount}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{dept.trainingCount}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{dept.avgPerformance.toFixed(2)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{dept.totalSalary ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(dept.totalSalary) : "0 ₫"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -532,7 +799,7 @@ const Reports: React.FC = () => {
                       if (!report) return null;
                       
                       const department = departments.find(d => d.id === departmentId);
-                      const totalNetSalary = Number(report.totalSalary) + Number(report.totalAllowances) - Number(report.totalDeductions);
+                      const totalNetSalary = Number(report.totalSalary || 0) + Number(report.totalAllowances || 0) - Number(report.totalDeductions || 0);
                       
                       return (
                         <tr key={departmentId} className="hover:bg-gray-50">
@@ -542,13 +809,13 @@ const Reports: React.FC = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.resignedEmployees}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.totalLeaves}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(report.totalSalary)}
+                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(report.totalSalary || 0)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(report.totalAllowances)}
+                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(report.totalAllowances || 0)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(report.totalDeductions)}
+                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(report.totalDeductions || 0)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalNetSalary)}
@@ -563,58 +830,73 @@ const Reports: React.FC = () => {
                       );
                     })}
                     {/* Summary row */}
-                    <tr className="bg-gray-50 font-semibold">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Tổng cộng</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {companyReports.reduce((sum, report) => sum + (report.totalEmployees || 0), 0)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {companyReports.reduce((sum, report) => sum + (report.newEmployees || 0), 0)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {companyReports.reduce((sum, report) => sum + (report.resignedEmployees || 0), 0)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {companyReports.reduce((sum, report) => sum + (report.totalLeaves || 0), 0)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                          companyReports.reduce((sum, report) => sum + Number(report.totalSalary || 0), 0)
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                          companyReports.reduce((sum, report) => sum + Number(report.totalAllowances || 0), 0)
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                          companyReports.reduce((sum, report) => sum + Number(report.totalDeductions || 0), 0)
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
-                          companyReports.reduce((sum, report) => sum + (
-                            Number(report.totalSalary || 0) + 
-                            Number(report.totalAllowances || 0) - 
-                            Number(report.totalDeductions || 0)
-                          ), 0)
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {companyReports.reduce((sum, report) => sum + (report.totalTrainingHours || 0), 0)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {companyReports.length > 0
-                          ? (companyReports.reduce((sum, report) => {
-                              const rating = typeof report.averagePerformanceRating === 'number' 
-                                ? report.averagePerformanceRating 
-                                : 0;
-                              return sum + rating;
-                            }, 0) / companyReports.length).toFixed(2)
-                          : 'N/A'}
-                      </td>
-                    </tr>
+                    {(() => {
+                      // Filter to get only the latest report for each department
+                      const latestReportsPerDepartment = Array.from(new Set(companyReports.map(r => r.departmentId)))
+                        .map(deptId => companyReports.find(r => r.departmentId === deptId))
+                        .filter(report => report) as any[]; // Filter out undefined and type as any[]
+
+                      if (latestReportsPerDepartment.length === 0 && companyReports.length > 0) {
+                        // Fallback or handle if latestReportsPerDepartment is empty but companyReports is not (should not happen with current logic)
+                        // For safety, you might log or return a simple row if this edge case is hit.
+                        // However, with the current find logic, this should contain the latest reports.
+                      }
+
+                      return (
+                        <tr className="bg-gray-50 font-semibold">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Tổng cộng</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {latestReportsPerDepartment.reduce((sum, report) => sum + (report.totalEmployees || 0), 0)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {latestReportsPerDepartment.reduce((sum, report) => sum + (report.newEmployees || 0), 0)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {latestReportsPerDepartment.reduce((sum, report) => sum + (report.resignedEmployees || 0), 0)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {latestReportsPerDepartment.reduce((sum, report) => sum + (report.totalLeaves || 0), 0)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                              latestReportsPerDepartment.reduce((sum, report) => sum + Number(report.totalSalary || 0), 0)
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                              latestReportsPerDepartment.reduce((sum, report) => sum + Number(report.totalAllowances || 0), 0)
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                              latestReportsPerDepartment.reduce((sum, report) => sum + Number(report.totalDeductions || 0), 0)
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                              latestReportsPerDepartment.reduce((sum, report) => sum + (
+                                Number(report.totalSalary || 0) +
+                                Number(report.totalAllowances || 0) -
+                                Number(report.totalDeductions || 0)
+                              ), 0)
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {latestReportsPerDepartment.reduce((sum, report) => sum + (report.totalTrainingHours || 0), 0)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {latestReportsPerDepartment.length > 0
+                              ? (latestReportsPerDepartment.reduce((sum, report) => {
+                                  const rating = typeof report.averagePerformanceRating === 'number'
+                                    ? report.averagePerformanceRating
+                                    : 0;
+                                  return sum + rating;
+                                }, 0) / latestReportsPerDepartment.length).toFixed(2)
+                              : 'N/A'}
+                          </td>
+                        </tr>
+                      );
+                    })()}
                   </tbody>
                 </table>
               </div>
@@ -628,6 +910,41 @@ const Reports: React.FC = () => {
                Vui lòng nhấn nút "Tạo báo cáo" để tạo báo cáo mới.
              </div>
           )}
+        </div>
+      )}
+
+      {/* Thêm Modal thông báo thành công */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-green-600">Thành công</h3>
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            <div className="text-center mb-4">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+                <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <p className="text-gray-700">{successModalMessage}</p>
+            </div>
+            <div className="text-center">
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

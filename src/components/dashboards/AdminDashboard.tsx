@@ -45,9 +45,13 @@ const AdminDashboard: React.FC = () => {
   if (error) return <div className="p-4 text-red-500">{error}</div>;
   if (!stats) return <div className="p-4">No data available</div>;
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | null) => {
+    if (amount === null) return '0 ₫';
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
   };
+
+  // Tính tổng số phòng ban
+  const totalDepartments = stats.departments.length;
 
   return (
     <div className="space-y-6">
@@ -62,7 +66,7 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">Tổng nhân viên</p>
-              <h3 className="text-xl font-bold">{stats?.overview?.totalEmployees || 0}</h3>
+              <h3 className="text-xl font-bold">{stats?.summary?.totalEmployees || 0}</h3>
             </div>
           </div>
         </div>
@@ -74,7 +78,7 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">Phòng ban</p>
-              <h3 className="text-xl font-bold">{stats?.overview?.totalDepartments || 0}</h3>
+              <h3 className="text-xl font-bold">{totalDepartments || 0}</h3>
             </div>
           </div>
         </div>
@@ -86,7 +90,7 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">Hiệu suất TB</p>
-              <h3 className="text-xl font-bold">{(stats?.overview?.averagePerformance || 0).toFixed(2)}</h3>
+              <h3 className="text-xl font-bold">{(stats?.summary?.avgPerformance || 0).toFixed(2)}</h3>
             </div>
           </div>
         </div>
@@ -98,7 +102,7 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">Đang nghỉ phép</p>
-              <h3 className="text-xl font-bold">{stats?.overview?.activeLeaves || 0}</h3>
+              <h3 className="text-xl font-bold">{stats?.summary?.activeLeaves || 0}</h3>
             </div>
           </div>
         </div>
@@ -110,7 +114,7 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">Đang đào tạo</p>
-              <h3 className="text-xl font-bold">{stats?.overview?.currentTrainings || 0}</h3>
+              <h3 className="text-xl font-bold">{stats?.summary?.ongoingTrainings || 0}</h3>
             </div>
           </div>
         </div>
@@ -122,7 +126,7 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">Tổng lương</p>
-              <h3 className="text-xl font-bold">{formatCurrency(stats?.overview?.totalSalary || 0)}</h3>
+              <h3 className="text-xl font-bold">{formatCurrency(stats?.summary?.totalSalary || 0)}</h3>
             </div>
           </div>
         </div>
@@ -147,13 +151,13 @@ const AdminDashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {(stats?.departmentStats || []).map((dept) => (
-                  <tr key={dept.departmentId}>
-                    <td className="px-4 py-3 text-sm text-gray-900">{dept.departmentName}</td>
+                {(stats?.departments || []).map((dept) => (
+                  <tr key={dept.department}>
+                    <td className="px-4 py-3 text-sm text-gray-900">{dept.department}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{dept.employeeCount}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{dept.activeLeaves}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{dept.ongoingTrainings}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{(dept.averagePerformance || 0).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{dept.leaveCount}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{dept.trainingCount}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{(dept.avgPerformance || 0).toFixed(2)}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{formatCurrency(dept.totalSalary)}</td>
                   </tr>
                 ))}
@@ -165,28 +169,33 @@ const AdminDashboard: React.FC = () => {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Payroll by Department */}
+        {/* Lương theo phòng ban */}
         <div className="bg-white rounded-lg shadow p-4">
           <h3 className="text-lg font-semibold mb-4">Lương theo phòng ban</h3>
           <div className="space-y-4">
-            {(stats?.payrollStats?.departmentBreakdown || []).map((dept) => (
-              <div key={dept.departmentName} className="flex items-center">
-                <span className="w-48 text-sm">{dept.departmentName}</span>
-                <div className="flex-1">
-                  <div className="bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-indigo-600 rounded-full h-2" 
-                      style={{ 
-                        width: `${(stats?.payrollStats?.total || 0) > 0 
-                          ? (dept.totalSalary / (stats?.payrollStats?.total || 1)) * 100 
-                          : 0}%` 
-                      }}
-                    ></div>
+            {(stats?.departments || []).map((dept) => {
+              const totalSalary = stats.departments.reduce((sum, d) => 
+                sum + (d.totalSalary || 0), 0);
+                
+              return (
+                <div key={dept.department} className="flex items-center">
+                  <span className="w-48 text-sm">{dept.department}</span>
+                  <div className="flex-1">
+                    <div className="bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-indigo-600 rounded-full h-2" 
+                        style={{ 
+                          width: `${totalSalary > 0 
+                            ? ((dept.totalSalary || 0) / totalSalary) * 100 
+                            : 0}%` 
+                        }}
+                      ></div>
+                    </div>
                   </div>
+                  <span className="ml-4 text-sm font-medium">{formatCurrency(dept.totalSalary)}</span>
                 </div>
-                <span className="ml-4 text-sm font-medium">{formatCurrency(dept.totalSalary)}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -194,24 +203,25 @@ const AdminDashboard: React.FC = () => {
         <div className="bg-white rounded-lg shadow p-4">
           <h3 className="text-lg font-semibold mb-4">Hiệu suất theo phòng ban</h3>
           <div className="space-y-4">
-            {(stats?.departmentStats || []).map((dept) => {
-              const maxPerformance = Math.max(...(stats?.departmentStats || []).map(d => d.averagePerformance || 0));
+            {(stats?.departments || []).map((dept) => {
+              const maxPerformance = Math.max(...(stats?.departments || [])
+                .map(d => d.avgPerformance || 0));
               return (
-                <div key={dept.departmentId} className="flex items-center">
-                  <span className="w-48 text-sm">{dept.departmentName}</span>
+                <div key={dept.department} className="flex items-center">
+                  <span className="w-48 text-sm">{dept.department}</span>
                   <div className="flex-1">
                     <div className="bg-gray-200 rounded-full h-2">
                       <div 
                         className="bg-blue-600 rounded-full h-2" 
                         style={{ 
                           width: `${maxPerformance > 0 
-                            ? ((dept.averagePerformance || 0) / maxPerformance) * 100
+                            ? ((dept.avgPerformance || 0) / maxPerformance) * 100
                             : 0}%`
                         }}
                       ></div>
                     </div>
                   </div>
-                  <span className="ml-4 text-sm font-medium">{(dept.averagePerformance || 0).toFixed(2)}</span>
+                  <span className="ml-4 text-sm font-medium">{(dept.avgPerformance || 0).toFixed(2)}</span>
                 </div>
               );
             })}
@@ -219,88 +229,28 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Thống kê nhân sự */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Nhân viên theo phòng ban */}
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-lg font-semibold mb-4">Nhân viên theo phòng ban</h3>
-          <div className="space-y-4">
-            {(stats?.departmentStats || []).map((dept) => (
-              <div key={dept.departmentId} className="flex items-center">
-                <span className="w-48 text-sm">{dept.departmentName}</span>
-                <div className="flex-1">
-                  <div className="bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-green-600 rounded-full h-2" 
-                      style={{ 
-                        width: `${(stats?.overview?.totalEmployees || 0) > 0
-                          ? (dept.employeeCount / stats.overview.totalEmployees) * 100
-                          : 0}%`
-                      }}
-                    ></div>
-                  </div>
+      {/* Nhân viên theo phòng ban */}
+      <div className="bg-white rounded-lg shadow p-4">
+        <h3 className="text-lg font-semibold mb-4">Nhân viên theo phòng ban</h3>
+        <div className="space-y-4">
+          {(stats?.departments || []).map((dept) => (
+            <div key={dept.department} className="flex items-center">
+              <span className="w-48 text-sm">{dept.department}</span>
+              <div className="flex-1">
+                <div className="bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-green-600 rounded-full h-2" 
+                    style={{ 
+                      width: `${(stats?.summary?.totalEmployees || 0) > 0
+                        ? (dept.employeeCount / (stats.summary.totalEmployees || 1)) * 100
+                        : 0}%`
+                    }}
+                  ></div>
                 </div>
-                <span className="ml-4 text-sm font-medium">{dept.employeeCount} nhân viên</span>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Tình trạng nghỉ phép và đào tạo */}
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-lg font-semibold mb-4">Tình trạng nghỉ phép và đào tạo</h3>
-          {((stats?.leaveStats?.total || 0) === 0 && (stats?.trainingStats?.total || 0) === 0) ? (
-            <div className="text-center py-12 text-gray-500">
-              <i className="fas fa-info-circle mr-2"></i>
-              Không có nhân viên đang nghỉ phép hoặc đào tạo
+              <span className="ml-4 text-sm font-medium">{dept.employeeCount} nhân viên</span>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {(stats?.leaveStats?.total || 0) > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">Nghỉ phép ({stats?.leaveStats?.total || 0})</h4>
-                  <div className="space-y-2">
-                    {(stats?.leaveStats?.details || []).map((item, index) => (
-                      <div key={index} className="bg-yellow-50 p-2 rounded">
-                        <p className="text-sm">
-                          <span className="font-medium">{item.employeeName}</span> - 
-                          <span className="text-gray-600"> {item.departmentName}</span>
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(item.startDate).toLocaleDateString()} - 
-                          {new Date(item.endDate).toLocaleDateString()}
-                        </p>
-                        <p className="text-xs text-gray-600">{item.reason}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {(stats?.trainingStats?.total || 0) > 0 && (
-                <div>
-                  <h4 className="font-medium mb-2">Đào tạo ({stats?.trainingStats?.total || 0})</h4>
-                  <div className="space-y-2">
-                    {(stats?.trainingStats?.details || []).map((item, index) => (
-                      <div key={index} className="bg-blue-50 p-2 rounded">
-                        <p className="text-sm">
-                          <span className="font-medium">{item.employeeName}</span> - 
-                          <span className="text-gray-600"> {item.departmentName}</span>
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Khóa học: {item.courseName}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          Điểm: {item.score} - 
-                          Hoàn thành: {new Date(item.completionDate).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          ))}
         </div>
       </div>
     </div>

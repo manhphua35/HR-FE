@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { User } from '../../types/api'; // Keep User import
 import { routePermissions, Role } from '../../config/routePermissions'; // Import Role and config
-import Sidebar from '../Sidebar'; // Import the new Sidebar component
+import Sidebar from './Sidebar'; // Cập nhật đường dẫn đến Sidebar
 
 const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false); // Added state back
@@ -43,6 +43,11 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
       name: 'Đánh giá',
       path: '/performance',
       icon: 'fas fa-chart-line'
+    },
+    {
+      name: 'Đào tạo',
+      path: '/training',
+      icon: 'fas fa-graduation-cap'
     },
     {
       name: 'Báo cáo',

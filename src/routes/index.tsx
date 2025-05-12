@@ -19,6 +19,8 @@ import Settings from '../pages/Settings';
 import Login from '../pages/Login';
 import NotFound from '../pages/NotFound';
 import Unauthorized from '../pages/Unauthorized';
+import Training from '../pages/Training';
+import TrainingDetail from '../pages/TrainingDetail';
 
 // Define roles type (matching backend response)
 type Role = 'SYSTEM_ADMIN' | 'HR_STAFF' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
@@ -106,6 +108,16 @@ const AppRoutes = () => {
       path: "/settings",
       element: <Settings />,
       allowedRoles: ['SYSTEM_ADMIN'] // Use backend role names
+    },
+    {
+      path: "training",
+      element: <Training />,
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE']
+    },
+    {
+      path: "training/:id",
+      element: <TrainingDetail />,
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE']
     }
   ];
 

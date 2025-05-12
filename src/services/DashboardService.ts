@@ -3,85 +3,30 @@ import { ApiResponse } from '../types/api';
 
 // --- Định nghĩa Interfaces mới khớp với API Response ---
 
-interface OverviewStats {
+interface SummaryStats {
   totalEmployees: number;
-  totalDepartments: number; // Đổi tên từ departmentsCount
   activeLeaves: number;
-  currentTrainings: number;
-  totalSalary: number;
-  averagePerformance: number;
+  ongoingTrainings: number;
+  totalSalary: number | null;
+  avgPerformance: number;
 }
 
 interface DepartmentStatDetail {
-  departmentId: number;
-  departmentName: string;
+  department: string;
   employeeCount: number;
-  activeLeaves: number;
-  ongoingTrainings: number;
-  averagePerformance: number;
-  totalSalary: number;
-}
-
-interface CountByDepartment {
-  department: string;
-  count: number;
-}
-
-interface ScoreByDepartment {
-  department: string;
-  score: number;
-}
-
-interface AmountByDepartment {
-  department: string;
-  amount: number;
-}
-
-interface PayrollDepartmentBreakdown {
-  departmentName: string;
-  totalSalary: number;
-}
-
-interface LeaveStats {
-  total: number;
-  details: any[]; // Để trống nếu không có dữ liệu
-}
-
-interface TrainingStats {
-  total: number;
-  details: any[]; // Để trống nếu không có dữ liệu
-}
-
-interface PayrollStats {
-  total: number;
-  departmentBreakdown: PayrollDepartmentBreakdown[];
-}
-
-interface PerformanceStats {
-  averageScore: number; // Lưu ý: overview cũng có averagePerformance
-  byDepartment: ScoreByDepartment[];
-}
-
-interface SalaryStats {
-  total: number;
-  byDepartment: AmountByDepartment[];
+  leaveCount: number;
+  trainingCount: number;
+  totalSalary: number | null;
+  avgPerformance: number;
 }
 
 // Interface chính cho toàn bộ response
 interface DashboardData {
-  overview: OverviewStats;
-  departmentStats: DepartmentStatDetail[];
-  leaveStats: LeaveStats;
-  trainingStats: TrainingStats;
-  payrollStats?: PayrollStats; // Thêm payrollStats để phù hợp với API response
-  performanceStats?: PerformanceStats; // Optional để tránh lỗi khi không có
-  salaryStats?: SalaryStats; // Optional để tránh lỗi khi không có
+  summary: SummaryStats;
+  departments: DepartmentStatDetail[];
 }
 
-// --- Các interface cũ không còn dùng cho getDashboardData ---
-// interface DashboardStats { ... } // Đã thay bằng DashboardData
-
-interface DepartmentStats { // Giữ lại cho getDepartmentStats nếu endpoint đó khác
+interface DepartmentStats {
   employeeCount: number;
   activeProjects: number;
   pendingLeaveRequests: number;
@@ -175,19 +120,9 @@ export class DashboardService {
 
 // Xuất các kiểu mới
 export type {
-  OverviewStats,
+  SummaryStats,
   DepartmentStatDetail,
-  CountByDepartment,
-  ScoreByDepartment,
-  AmountByDepartment,
-  LeaveStats,
-  TrainingStats,
-  PayrollStats,
-  PayrollDepartmentBreakdown,
-  PerformanceStats,
-  SalaryStats,
   DashboardData,
-  // Giữ lại các kiểu cũ nếu các hàm khác còn dùng
   DepartmentStats,
   EmployeeStats,
   Schedule,
