@@ -25,7 +25,7 @@ const HrManagerDashboard: React.FC = () => {
         return;
       }
       // Optional: Add role check if needed
-      // if (!currentUser || currentUser.role !== 'HR_MANAGER') { ... }
+      // if (!currentUser || currentUser.role !== 'HR_STAFF') { ... }
 
       setComponentLoading(true); // Start component loading for data fetch
       setError(null); // Clear previous errors

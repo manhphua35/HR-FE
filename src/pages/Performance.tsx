@@ -7,12 +7,51 @@ import { PerformancePlan, PerformanceReview } from '../types/api';
 import { PerformanceService } from '../services/PerformanceService';
 import { DepartmentService, Department } from '../services/DepartmentService';
 
+interface Employee {
+  id: number;
+  fullName: string;
+  email: string;
+}
+
+interface Plan {
+  id: number;
+  title: string;
+  description: string;
+}
+
 interface DepartmentReview {
   reviewId: number;
   employeeName: string;
   planTitle: string;
   reviewDate: string;
   totalScore: string;
+  status?: string;
+  comments?: string;
+  strengths?: string;
+  weaknesses?: string;
+  improvement?: string;
+  employee?: {
+    id: number;
+    fullName: string;
+    email?: string;
+  };
+  reviewer?: {
+    id: number;
+    fullName: string;
+    email?: string;
+  };
+  plan?: {
+    id: number;
+    title: string;
+    description?: string;
+    criteria?: {
+      id: number;
+      name: string;
+      weight: number;
+      description: string;
+    }[];
+  };
+  scores?: any[];
 }
 
 interface DepartmentPerformance {
@@ -20,14 +59,14 @@ interface DepartmentPerformance {
   reviews: DepartmentReview[];
 }
 
-const formatScore = (score: string | undefined) => {
+const formatScore = (score: string | number | undefined) => {
   if (!score) return 'N/A';
-  return parseFloat(score).toFixed(2);
+  return typeof score === 'string' ? parseFloat(score).toFixed(2) : score.toFixed(2);
 };
 
-const getScoreClass = (score: string | undefined) => {
+const getScoreClass = (score: string | number | undefined) => {
   if (!score) return 'text-gray-600 font-medium';
-  const numScore = parseFloat(score);
+  const numScore = typeof score === 'string' ? parseFloat(score) : score;
   if (numScore >= 4.0) return 'text-green-600 font-medium';
   if (numScore >= 3.5) return 'text-blue-600 font-medium';
   if (numScore >= 3.0) return 'text-yellow-600 font-medium';
@@ -42,6 +81,7 @@ const Performance: React.FC = () => {
   const [employeeReviews, setEmployeeReviews] = useState<PerformanceReview[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<PerformancePlan | null>(null);
   const [selectedReview, setSelectedReview] = useState<DepartmentReview | null>(null);
+  const [selectedReviewDetails, setSelectedReviewDetails] = useState<PerformanceReview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [departmentData, setDepartmentData] = useState<DepartmentPerformance[]>([]);
@@ -50,6 +90,7 @@ const Performance: React.FC = () => {
   const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
   const [isCreateReviewModalOpen, setIsCreateReviewModalOpen] = useState(false);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
+  const [loadingReviewDetails, setLoadingReviewDetails] = useState(false);
 
   const isManager = currentUser?.role?.roleType === 'DEPARTMENT_MANAGER';
   const isSystemAdmin = currentUser?.role?.roleType === 'SYSTEM_ADMIN';
@@ -270,6 +311,42 @@ const Performance: React.FC = () => {
     setIsCreatePlanModalOpen(true);
   };
 
+  const handleViewReviewDetails = async (reviewId: number) => {
+    try {
+      setLoadingReviewDetails(true);
+      const reviewDetails = await PerformanceService.getReviewDetails(reviewId);
+      
+      console.log("Dữ liệu chi tiết đánh giá:", reviewDetails);
+      
+      // Cập nhật thông tin đánh giá chi tiết
+      setSelectedReviewDetails(reviewDetails);
+      
+      // Chuẩn bị dữ liệu cho modal
+      setSelectedReview({
+        reviewId: reviewDetails.id,
+        employeeName: reviewDetails.employee?.fullName || 'Bạn',
+        planTitle: reviewDetails.plan?.title || 'N/A',
+        reviewDate: reviewDetails.reviewDate,
+        totalScore: reviewDetails.totalScore.toString(),
+        status: reviewDetails.status,
+        comments: reviewDetails.comments,
+        strengths: reviewDetails.strengths,
+        weaknesses: reviewDetails.weaknesses,
+        improvement: reviewDetails.improvement,
+        reviewer: reviewDetails.reviewer,
+        plan: reviewDetails.plan,
+        scores: reviewDetails.scores
+      });
+      
+      setIsEditReviewModalOpen(true);
+      setLoadingReviewDetails(false);
+    } catch (err) {
+      console.error('Lỗi khi lấy chi tiết đánh giá:', err);
+      setError('Không thể tải chi tiết đánh giá');
+      setLoadingReviewDetails(false);
+    }
+  };
+
   if (loading) {
     return <div className="p-4">Đang tải...</div>;
   }
@@ -372,27 +449,65 @@ const Performance: React.FC = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kế hoạch</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày đánh giá</th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Điểm số</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhận xét</th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {dept.reviews.map((review) => (
                       <tr key={review.reviewId} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {review.employeeName}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10">
+                              <img
+                                className="h-10 w-10 rounded-full"
+                                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(review.employeeName)}&background=random`}
+                                alt={review.employeeName}
+                              />
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                {review.employeeName}
+                              </div>
+                            </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-normal">
+                        <td className="px-6 py-4">
                           <div className="text-sm text-gray-900">{review.planTitle}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-500">
-                            {new Date(review.reviewDate).toLocaleDateString()}
+                            {new Date(review.reviewDate).toLocaleDateString('vi-VN')}
                           </div>
                         </td>
                         <td className={`px-6 py-4 whitespace-nowrap text-center ${getScoreClass(review.totalScore)}`}>
                           {formatScore(review.totalScore)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            review.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                            review.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {review.status === 'APPROVED' ? 'Đã duyệt' :
+                             review.status === 'PENDING' ? 'Đang chờ' : 'Từ chối'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{review.comments}</div>
+                          {review.strengths && (
+                            <div className="mt-1">
+                              <span className="text-xs font-medium text-green-600">Điểm mạnh:</span>
+                              <span className="text-xs text-gray-500 ml-1">{review.strengths}</span>
+                            </div>
+                          )}
+                          {review.weaknesses && (
+                            <div className="mt-1">
+                              <span className="text-xs font-medium text-red-600">Điểm yếu:</span>
+                              <span className="text-xs text-gray-500 ml-1">{review.weaknesses}</span>
+                            </div>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <button
@@ -496,52 +611,92 @@ const Performance: React.FC = () => {
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhân viên</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày đánh giá</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Điểm trung bình</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Điểm trung bình</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhận xét</th>
                       <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {reviews.map((review) => {
-                      const averageScore = review.scores.reduce((acc, curr) => acc + curr.score, 0) / review.scores.length;
-                      return (
-                        <tr key={review.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{review.employee?.fullName || `ID: ${review.employeeId}`}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {new Date(review.reviewDate).toLocaleDateString()}
+                    {reviews.map((review: PerformanceReview) => (
+                      <tr key={review.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10">
+                              <img
+                                className="h-10 w-10 rounded-full"
+                                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(review.employee?.fullName || '')}&background=random`}
+                                alt={review.employee?.fullName}
+                              />
                             </div>
-                          </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-right ${getScoreClass(averageScore.toString())}`}>
-                            {averageScore.toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
-                            <button
-                              className="text-yellow-600 hover:text-yellow-900 mr-3"
-                              onClick={() => {
-                                setSelectedReview({
-                                  reviewId: review.id,
-                                  employeeName: review.employee?.fullName || `ID: ${review.employeeId}`,
-                                  planTitle: selectedPlan.title,
-                                  reviewDate: review.reviewDate,
-                                  totalScore: averageScore.toString()
-                                });
-                                setIsEditReviewModalOpen(true);
-                              }}
-                            >
-                              <i className="fas fa-edit"></i>
-                            </button>
-                            <button
-                              className="text-red-600 hover:text-red-900"
-                              onClick={() => handleDeleteReview(review.id)}
-                            >
-                              <i className="fas fa-trash"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                {review.employee?.fullName}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {new Date(review.reviewDate).toLocaleDateString('vi-VN')}
+                          </div>
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-center ${getScoreClass(review.totalScore)}`}>
+                          {formatScore(review.totalScore)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            review.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                            review.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {review.status === 'APPROVED' ? 'Đã duyệt' :
+                             review.status === 'PENDING' ? 'Đang chờ' : 'Từ chối'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900">{review.comments}</div>
+                          <div className="mt-1">
+                            <span className="text-xs font-medium text-green-600">Điểm mạnh:</span>
+                            <span className="text-xs text-gray-500 ml-1">{review.strengths}</span>
+                          </div>
+                          <div className="mt-1">
+                            <span className="text-xs font-medium text-red-600">Điểm yếu:</span>
+                            <span className="text-xs text-gray-500 ml-1">{review.weaknesses}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <button
+                            className="text-yellow-600 hover:text-yellow-900 mr-3"
+                            onClick={() => {
+                              setSelectedReview({
+                                reviewId: review.id,
+                                employeeName: review.employee?.fullName || `ID: ${review.employeeId}`,
+                                planTitle: selectedPlan.title,
+                                reviewDate: review.reviewDate,
+                                totalScore: review.totalScore.toString(),
+                                status: review.status,
+                                comments: review.comments,
+                                strengths: review.strengths,
+                                weaknesses: review.weaknesses,
+                                improvement: review.improvement
+                              });
+                              setIsEditReviewModalOpen(true);
+                            }}
+                            title="Chỉnh sửa"
+                          >
+                            <i className="fas fa-edit"></i>
+                          </button>
+                          <button
+                            className="text-red-600 hover:text-red-900"
+                            onClick={() => handleDeleteReview(review.id)}
+                            title="Xóa"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -562,51 +717,67 @@ const Performance: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Người đánh giá</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày đánh giá</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Điểm trung bình</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Chi tiết</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {employeeReviews.map((review) => {
-                  const averageScore = review.scores.reduce((acc, curr) => acc + curr.score, 0) / review.scores.length;
-                  return (
-                    <tr key={review.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{review.plan?.title || 'N/A'}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{review.reviewer?.fullName || `ID: ${review.reviewerId}`}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">
-                          {new Date(review.reviewDate).toLocaleDateString()}
+                {employeeReviews.map((review: PerformanceReview) => (
+                  <tr key={review.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-medium text-gray-900">{review.plan?.title}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-8 w-8">
+                          <img
+                            className="h-8 w-8 rounded-full"
+                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(review.reviewer?.fullName || '')}&background=random`}
+                            alt={review.reviewer?.fullName}
+                          />
                         </div>
-                      </td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-center ${getScoreClass(averageScore.toString())}`}>
-                        {averageScore.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <button
-                          className="text-blue-600 hover:text-blue-900"
-                          onClick={() => {
-                            setSelectedReview({
-                              reviewId: review.id,
-                              employeeName: currentUser?.fullName || 'Bạn',
-                              planTitle: review.plan?.title || 'N/A',
-                              reviewDate: review.reviewDate,
-                              totalScore: averageScore.toString()
-                            });
-                            setIsEditReviewModalOpen(true);
-                          }}
-                        >
+                        <div className="ml-3">
+                          <div className="text-sm font-medium text-gray-900">{review.reviewer?.fullName}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {new Date(review.reviewDate).toLocaleDateString('vi-VN')}
+                      </div>
+                    </td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-center ${getScoreClass(review.totalScore)}`}>
+                      {formatScore(review.totalScore)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        review.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                        review.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {review.status === 'APPROVED' ? 'Đã duyệt' :
+                         review.status === 'PENDING' ? 'Đang chờ' : 'Từ chối'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <button
+                        className="text-blue-600 hover:text-blue-900"
+                        onClick={() => handleViewReviewDetails(review.id)}
+                        title="Xem chi tiết"
+                        disabled={loadingReviewDetails}
+                      >
+                        {loadingReviewDetails ? (
+                          <i className="fas fa-spinner fa-spin"></i>
+                        ) : (
                           <i className="fas fa-eye"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
                 {employeeReviews.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
                       Chưa có đánh giá nào
                     </td>
                   </tr>
@@ -646,7 +817,7 @@ const Performance: React.FC = () => {
           isOpen={isEditReviewModalOpen}
           onClose={() => setIsEditReviewModalOpen(false)}
           review={selectedReview}
-          criteria={selectedPlan?.criteria || []}
+          criteria={selectedReviewDetails?.plan?.criteria || []}
           isReadOnly={isRegularEmployee}
           onSubmit={async (data: {
             reviewDate: string;

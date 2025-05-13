@@ -66,10 +66,10 @@
 //   const [companyReports, setCompanyReports] = useState<any[] | null>(null);
 
 //   // Determine user roles for conditional fetching and rendering using string literals from AuthContext
-//   // Assuming 'HR_MANAGER' in frontend maps to 'HR_STAFF' in backend routes
+//   // Assuming 'HR_STAFF' in frontend maps to 'HR_STAFF' in backend routes
 //   // Assuming 'DEPARTMENT_MANAGER' in frontend maps to 'DEPARTMENT_HEAD' in backend routes
 //   const userRole = currentUser?.role?.roleType;
-//   const isHrOrAdmin = userRole === 'HR_MANAGER' || userRole === 'SYSTEM_ADMIN';
+//   const isHrOrAdmin = userRole === 'HR_STAFF' || userRole === 'SYSTEM_ADMIN';
 //   const isDeptHead = userRole === 'DEPARTMENT_MANAGER';
 
 //   useEffect(() => {

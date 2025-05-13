@@ -3,6 +3,7 @@ import { AttendanceService, AttendanceStatus, AttendanceRecord } from '../servic
 import CreateAttendanceModal from '../components/modals/CreateAttendanceModal';
 import EditAttendanceModal from '../components/modals/EditAttendanceModal';
 import ConfirmDeleteAttendanceModal from '../components/modals/ConfirmDeleteAttendanceModal';
+import { useAuth } from '../contexts/AuthContext';
 
 // Format date to DD/MM/YYYY for display
 const formatDate = (date: Date): string => {
@@ -49,6 +50,8 @@ const dayOptions = [
 ];
 
 const Attendance: React.FC = () => {
+  const { currentUser } = useAuth();
+  const isEmployee = currentUser?.role?.roleType === 'EMPLOYEE';
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "">("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("");
@@ -325,13 +328,15 @@ const Attendance: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">Chấm công</h1>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center"
-        >
-          <i className="fas fa-plus mr-2"></i>
-          Thêm chấm công
-        </button>
+        {!isEmployee && (
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center"
+          >
+            <i className="fas fa-plus mr-2"></i>
+            Thêm chấm công
+          </button>
+        )}
       </div>
 
       {/* Thêm thanh điều khiển chế độ xem */}

@@ -5,6 +5,7 @@ export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface LeaveRequest {
   id: number;
+  userId: number;
   startDate: string;
   endDate: string;
   type: LeaveType;
@@ -12,10 +13,14 @@ export interface LeaveRequest {
   numberOfDays: number;
   reason: string;
   rejectionReason?: string;
-  user: {
+  approverId?: number | null;
+  createdAt: string;
+  updatedAt: string;
+  // Các trường sau đây có thể được thiết lập bởi backend nếu có, hoặc không
+  user?: {
     id: number;
     fullName: string;
-    remainingLeaves: number;
+    remainingLeaves?: number;
     [key: string]: any;
   };
   approver?: {
@@ -23,7 +28,6 @@ export interface LeaveRequest {
     fullName: string;
     [key: string]: any;
   };
-  createdAt: string;
 }
 
 interface GetAllLeavesParams {

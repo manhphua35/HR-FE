@@ -103,8 +103,15 @@ export class DashboardService {
   }
 
   static async getEmployeeStats(employeeId: string): Promise<EmployeeStats> {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    
     const response = await axiosInstance.get<ApiResponse<EmployeeStats>>(
-      `/dashboard/employee/${employeeId}`
+      `/reports/employee-dashboard/${employeeId}`,
+      {
+        params: { month: currentMonth, year: currentYear }
+      }
     );
     return response.data.data;
   }

@@ -27,16 +27,7 @@ export interface ApiResponse<T> {
   data: T;
 }
 
-export class PerformanceService {
-  static async getReviewDetails(reviewId: number): Promise<PerformanceReview> {
-    const { data } = await axios.get<ApiResponse<PerformanceReview>>(`/performance/reviews/${reviewId}`);
-    return data.data;
-  }
-
-  static async getDepartmentPlans(): Promise<PerformancePlan[]> {
-    const { data } = await axios.get<ApiResponse<PerformancePlan[]>>('/performance/plans/department');
-    return data.data;
-  }
+export class PerformanceService {  static async getReviewDetails(reviewId: number): Promise<PerformanceReview> {    const { data } = await axios.get<ApiResponse<PerformanceReview>>(`/performance/reviews/${reviewId}`);    return data.data;  }  static async getDepartmentPlans(): Promise<PerformancePlan[]> {    const { data } = await axios.get<ApiResponse<PerformancePlan[]>>('/performance/plans/department');    return data.data;  }
 
   static async getAllDepartmentPlans(): Promise<PerformancePlan[]> {
     const { data } = await axios.get<ApiResponse<PerformancePlan[]>>('/performance/plans/all');
@@ -54,12 +45,18 @@ export class PerformanceService {
   }
 
   static async createPlan(data: Omit<PerformancePlan, 'id' | 'createdBy'> & { departmentId: number }): Promise<PerformancePlan> {
+    console.log('Dữ liệu gửi đến API khi tạo kế hoạch:', data);
     const response = await axios.post<ApiResponse<PerformancePlan>>('/performance/plans/create', data);
     return response.data.data;
   }
 
   static async getDepartmentReviews(planId: number): Promise<PerformanceReview[]> {
     const { data } = await axios.get<ApiResponse<PerformanceReview[]>>(`/performance/reviews/department/${planId}`);
+    return data.data;
+  }
+
+  static async getReviewDetails(reviewId: number): Promise<PerformanceReview> {
+    const { data } = await axios.get<ApiResponse<PerformanceReview>>(`/performance/reviews/${reviewId}`);
     return data.data;
   }
 

@@ -76,7 +76,7 @@ export interface User {
   fullName: string;
   role: {
     id: number;
-    roleType: 'SYSTEM_ADMIN' | 'HR_MANAGER' | 'HR_STAFF' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
+    roleType: 'SYSTEM_ADMIN' | 'HR_STAFF' | 'HR_STAFF' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
     name: string;
     description: string;
   };
@@ -139,6 +139,13 @@ export interface PerformanceReview {
   plan?: {
     id: number;
     title: string;
+    description?: string;
+    criteria?: {
+      id: number;
+      name: string;
+      weight: number;
+      description: string;
+    }[];
   };
   employee?: {
     id: number;

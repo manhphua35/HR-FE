@@ -35,7 +35,7 @@ const Training: React.FC<TrainingProps> = () => {
 
   // Kiểm tra quyền hạn
   const isAdmin = currentUser?.role?.roleType === 'SYSTEM_ADMIN';
-  const isHR = currentUser?.role?.roleType === 'HR_MANAGER' || currentUser?.role?.roleType === 'HR_STAFF';
+  const isHR = currentUser?.role?.roleType === 'HR_STAFF';
   const isDepartmentHead = currentUser?.role?.roleType === 'DEPARTMENT_MANAGER';
   const canManageCourses = isAdmin || isHR || isDepartmentHead;
 

@@ -107,7 +107,7 @@ const AppRoutes = () => {
     {
       path: "/settings",
       element: <Settings />,
-      allowedRoles: ['SYSTEM_ADMIN'] // Use backend role names
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE']
     },
     {
       path: "training",
@@ -151,7 +151,7 @@ const AppRoutes = () => {
                 // If authenticated, THEN check role
                 currentUser && currentUser.role && 
                   (route.allowedRoles.includes(currentUser.role.roleType as Role) || 
-                   (currentUser.role.roleType === 'HR_MANAGER' && route.allowedRoles.includes('HR_STAFF'))) ? ( // Xử lý cả HR_MANAGER
+                   (currentUser.role.roleType === 'HR_STAFF' && route.allowedRoles.includes('HR_STAFF'))) ? ( // Xử lý cả HR_STAFF
                   // Log success before rendering element
                   console.log(`[AppRoutes] Role match SUCCESS for ${route.path}. User role: ${currentUser.role.roleType}. Allowed: ${route.allowedRoles.join(', ')}`), // Access nested role.roleType
                   route.element // Authorized

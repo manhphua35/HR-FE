@@ -3,6 +3,7 @@ import { LeaveService, LeaveRequest } from '../services/LeaveService';
 import { useAuth } from '../contexts/AuthContext';
 import { format } from 'date-fns';
 import CreateLeaveModal from '../components/modals/CreateLeaveModal';
+import axiosInstance from '../config/axios';
 
 // Tương tự Attendance, tạo enum để quản lý chế độ xem
 enum ViewMode {
@@ -31,6 +32,12 @@ const months = [
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 5 }, (_, index) => currentYear - index);
 
+// Interface cho cache user data
+interface UserInfo {
+  id: number;
+  fullName: string;
+}
+
 const Leave: React.FC = () => {
   const { currentUser } = useAuth();
   const isAdmin = currentUser?.role?.roleType === 'SYSTEM_ADMIN' || currentUser?.role?.roleType === 'HR_STAFF';
@@ -40,6 +47,8 @@ const Leave: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [usersCache, setUsersCache] = useState<Record<number, UserInfo>>({});
+  const [loadingUsers, setLoadingUsers] = useState(false);
   
   // Filter states
   const [startDate, setStartDate] = useState('');
@@ -69,6 +78,37 @@ const Leave: React.FC = () => {
   useEffect(() => {
     fetchLeaves();
   }, [isAdmin, startDate, endDate, status, type, viewMode, selectedDate, selectedMonth, selectedYear]);
+
+  // Hàm lấy thông tin người dùng dựa vào userId
+  const fetchUserInfo = async (userIds: number[]) => {
+    if (userIds.length === 0) return;
+
+    // Lọc ra những userId chưa có trong cache
+    const uniqueIds = Array.from(new Set(userIds)).filter(id => !usersCache[id]);
+    if (uniqueIds.length === 0) return;
+
+    setLoadingUsers(true);
+    try {
+      // Lấy thông tin các người dùng chưa có trong cache
+      const response = await axiosInstance.get('/users/info', {
+        params: { userIds: uniqueIds.join(',') }
+      });
+
+      const newUserData = { ...usersCache };
+      response.data.data.forEach((user: any) => {
+        newUserData[user.id] = {
+          id: user.id,
+          fullName: user.fullName || `User ${user.id}`
+        };
+      });
+
+      setUsersCache(newUserData);
+    } catch (err) {
+      console.error('Failed to fetch user info:', err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   const fetchLeaves = async () => {
     try {
@@ -107,6 +147,17 @@ const Leave: React.FC = () => {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       setLeaves(sortedData);
+
+      // Chuẩn bị danh sách userIds để lấy thông tin
+      const userIds = sortedData.map(leave => leave.userId);
+      const approverIds = sortedData
+        .filter(leave => leave.approverId)
+        .map(leave => leave.approverId!)
+        .filter(id => id !== null);
+      
+      // Lấy thông tin người dùng
+      await fetchUserInfo([...userIds, ...approverIds]);
+      
       setError(null);
     } catch (err) {
       console.error('Failed to fetch leaves:', err);
@@ -196,6 +247,14 @@ const Leave: React.FC = () => {
     } finally {
       setProcessingAction(false);
     }
+  };
+
+  // Hàm lấy tên người dùng từ cache hoặc hiển thị "User ID"
+  const getUserName = (userId: number) => {
+    if (usersCache[userId]) {
+      return usersCache[userId].fullName;
+    }
+    return `User ${userId}`;
   };
 
   const getStatusColor = (status: string) => {
@@ -382,7 +441,7 @@ const Leave: React.FC = () => {
           <div className="bg-white rounded-lg p-6 w-96 max-w-full">
             <h2 className="text-xl font-semibold mb-4">Xác nhận phê duyệt</h2>
             <div className="mb-6">
-              <p className="text-gray-700">Bạn có chắc muốn phê duyệt đơn nghỉ phép của <strong>{selectedLeave.user.fullName}</strong> không?</p>
+              <p className="text-gray-700">Bạn có chắc muốn phê duyệt đơn nghỉ phép của <strong>{getUserName(selectedLeave.userId)}</strong> không?</p>
               <p className="text-gray-600 text-sm mt-2">
                 <span className="font-medium">Thời gian: </span>
                 {format(new Date(selectedLeave.startDate), 'dd/MM/yyyy')} - {format(new Date(selectedLeave.endDate), 'dd/MM/yyyy')}
@@ -426,7 +485,7 @@ const Leave: React.FC = () => {
           <div className="bg-white rounded-lg p-6 w-96 max-w-full">
             <h2 className="text-xl font-semibold mb-4">Từ chối đơn nghỉ phép</h2>
             <div className="mb-2">
-              <p className="text-gray-700 mb-2">Đơn nghỉ phép của <strong>{selectedLeave.user.fullName}</strong></p>
+              <p className="text-gray-700 mb-2">Đơn nghỉ phép của <strong>{getUserName(selectedLeave.userId)}</strong></p>
               <p className="text-gray-600 text-sm">
                 <span className="font-medium">Thời gian: </span>
                 {format(new Date(selectedLeave.startDate), 'dd/MM/yyyy')} - {format(new Date(selectedLeave.endDate), 'dd/MM/yyyy')}
@@ -483,7 +542,7 @@ const Leave: React.FC = () => {
           <div className="bg-white rounded-lg p-6 w-96 max-w-full">
             <h2 className="text-xl font-semibold mb-4">Xác nhận xóa</h2>
             <div className="mb-6">
-              <p className="text-gray-700">Bạn có chắc muốn xóa đơn nghỉ phép của <strong>{selectedLeave.user.fullName}</strong> không?</p>
+              <p className="text-gray-700">Bạn có chắc muốn xóa đơn nghỉ phép của <strong>{getUserName(selectedLeave.userId)}</strong> không?</p>
               <p className="text-gray-600 text-sm mt-2">
                 <span className="font-medium">Thời gian: </span>
                 {format(new Date(selectedLeave.startDate), 'dd/MM/yyyy')} - {format(new Date(selectedLeave.endDate), 'dd/MM/yyyy')}
@@ -595,6 +654,7 @@ const Leave: React.FC = () => {
             <thead className="text-xs text-gray-700 uppercase bg-gray-50">
               <tr>
                 <th scope="col" className="px-6 py-4">Nhân viên</th>
+                <th scope="col" className="px-6 py-4">Phòng ban</th>
                 <th scope="col" className="px-6 py-4">Loại nghỉ</th>
                 <th scope="col" className="px-6 py-4">Thời gian</th>
                 <th scope="col" className="px-6 py-4">Số ngày</th>
@@ -613,16 +673,22 @@ const Leave: React.FC = () => {
                         <div className="flex-shrink-0 h-10 w-10">
                           <img
                             className="h-10 w-10 rounded-full"
-                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(leave.user.fullName)}&background=random`}
-                            alt={leave.user.fullName}
+                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(leave.user?.fullName || 'Unknown')}&background=random`}
+                            alt={leave.user?.fullName || 'Unknown'}
                           />
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
-                            {leave.user.fullName}
+                            {leave.user?.fullName || 'Unknown'}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {leave.user?.email || 'No email'}
                           </div>
                         </div>
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900">{leave.user?.department?.name || 'N/A'}</div>
                     </td>
                     <td className="px-6 py-4">{getTypeLabel(leave.type)}</td>
                     <td className="px-6 py-4">
@@ -643,7 +709,25 @@ const Leave: React.FC = () => {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {leave.approver?.fullName || '-'}
+                      {leave.approver ? (
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-8 w-8">
+                            <img
+                              className="h-8 w-8 rounded-full"
+                              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(leave.approver.fullName)}&background=random`}
+                              alt={leave.approver.fullName}
+                            />
+                          </div>
+                          <div className="ml-3">
+                            <div className="text-sm font-medium text-gray-900">
+                              {leave.approver.fullName}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {leave.approver.email}
+                            </div>
+                          </div>
+                        </div>
+                      ) : '-'}
                     </td>
                     {(isAdmin || isDepartmentHead) && (
                       <td className="px-6 py-4">
@@ -680,7 +764,7 @@ const Leave: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-6 py-10 text-center text-gray-500">
+                  <td colSpan={9} className="px-6 py-10 text-center text-gray-500">
                     Không có dữ liệu nghỉ phép nào được tìm thấy
                   </td>
                 </tr>

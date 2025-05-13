@@ -18,7 +18,7 @@ const Dashboard: React.FC = () => {
   switch(currentUser.role?.roleType) { // Access nested role.roleType
     case 'SYSTEM_ADMIN': // Use backend role names
       return <AdminDashboard />;
-    case 'HR_MANAGER': // Use backend role names
+    case 'HR_STAFF': // Use backend role names
       return <HrManagerDashboard />;
     case 'DEPARTMENT_MANAGER': // Use backend role names
       // Assuming department info is still needed, might need adjustment based on User type update

@@ -69,9 +69,19 @@ const EditReviewModal: React.FC<EditReviewModalProps> = ({
     };
 
     if (isOpen && review.reviewId) {
-      fetchReviewDetails();
+      if (review.scores && review.scores.length > 0) {
+        setReviewDate(review.reviewDate || '');
+        setScores(review.scores);
+        setComments(review.comments || '');
+        setStrengths(review.strengths || '');
+        setWeaknesses(review.weaknesses || '');
+        setImprovement(review.improvement || '');
+        setLoading(false);
+      } else {
+        fetchReviewDetails();
+      }
     }
-  }, [isOpen, review.reviewId]);
+  }, [isOpen, review.reviewId, review.scores]);
 
   const handleScoreChange = (criteriaId: number, field: 'score' | 'comment', value: string | number) => {
     const newScores = [...scores];
