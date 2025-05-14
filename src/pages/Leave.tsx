@@ -41,7 +41,7 @@ interface UserInfo {
 const Leave: React.FC = () => {
   const { currentUser } = useAuth();
   const isAdmin = currentUser?.role?.roleType === 'SYSTEM_ADMIN' || currentUser?.role?.roleType === 'HR_STAFF';
-  const isDepartmentHead = currentUser?.role?.roleType === 'DEPARTMENT_MANAGER';
+  const isDepartmentHead = currentUser?.role?.roleType === 'DEPARTMENT_HEAD';
 
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);

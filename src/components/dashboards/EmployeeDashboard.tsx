@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { DashboardService } from '../../services/DashboardService';
-// import { IEmployeeDashboardData, ITrainingCourse } from '../../services/DashboardService'; // Remove incorrect import
+import { DashboardService, IEmployeeDashboardData, ITrainingCourse } from '../../services/DashboardService';
 
 // Define necessary types directly in the component file
 interface IEmployeeProfile {
@@ -33,28 +32,11 @@ interface IPayrollSummary {
     netSalary: string;
 }
 
-interface ITrainingCourse {
-    id: number;
-    name: string;
-    startDate: string | Date; // API might return string or Date
-    endDate: string | Date;
-    progress: number;
-}
-
 interface IPerformanceSummary {
     period: string;
     overallScore: string; // API returns string
     strengths: string[];
     improvements: string[];
-}
-
-interface IEmployeeDashboardData {
-    employee: IEmployeeProfile;
-    attendance: IAttendanceSummary;
-    leaves: ILeaveSummary;
-    payroll: IPayrollSummary | null;
-    training: ITrainingCourse[];
-    performance: IPerformanceSummary | null;
 }
 
 interface EmployeeDashboardProps {
@@ -75,13 +57,12 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ userId }) => {
       }
 
       try {
-        // DashboardService.getEmployeeStats should return the IEmployeeDashboardData structure
-        const dashboardData = await DashboardService.getEmployeeStats(userId) as unknown as IEmployeeDashboardData;
+        const dashboardData = await DashboardService.getEmployeeStats(userId);
         setData(dashboardData);
         setLoading(false);
       } catch (err) {
         setError('Failed to fetch employee dashboard data');
-        console.error(err); // Log the error for debugging
+        console.error(err);
         setLoading(false);
       }
     };
@@ -201,7 +182,6 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ userId }) => {
                         </div>
                         <span className="text-sm font-semibold text-blue-600">{course.progress}%</span>
                     </div>
-                    {/* Optional: Add a progress bar */}
                      <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
                         <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: `${course.progress}%` }}></div>
                      </div>
@@ -238,9 +218,6 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ userId }) => {
           </div>
         </div>
       </div>
-
-      {/* Quick Actions (Optional - giữ lại nếu vẫn cần) */}
-      {/* ... (Phần Quick Actions giữ nguyên nếu bạn muốn) ... */}
     </div>
   );
 };

@@ -18,13 +18,13 @@ const MainLayout: React.FC = () => {
       name: 'Trang chủ', // Đổi thành Trang chủ
       path: '/dashboard',
       icon: 'fas fa-tachometer-alt',
-      allowedRoles: ['admin', 'HR_STAFF', 'department_manager', 'employee']
+      allowedRoles: ['admin', 'HR_STAFF', 'DEPARTMENT_HEAD', 'employee']
     },
     { 
       name: 'Employees', 
       path: '/employees', 
       icon: 'fas fa-users',
-      allowedRoles: ['admin', 'HR_STAFF', 'department_manager']
+      allowedRoles: ['admin', 'HR_STAFF', 'DEPARTMENT_HEAD']
     },
     { 
       name: 'Departments', 
@@ -36,19 +36,19 @@ const MainLayout: React.FC = () => {
       name: 'Attendance', 
       path: '/attendance', 
       icon: 'fas fa-clipboard-check',
-      allowedRoles: ['admin', 'HR_STAFF', 'department_manager', 'employee']
+      allowedRoles: ['admin', 'HR_STAFF', 'DEPARTMENT_HEAD', 'employee']
     },
     { 
       name: 'Performance', 
       path: '/performance', 
       icon: 'fas fa-chart-line',
-      allowedRoles: ['admin', 'HR_STAFF', 'department_manager', 'employee']
+      allowedRoles: ['admin', 'HR_STAFF', 'DEPARTMENT_HEAD', 'employee']
     },
     { 
       name: 'Leave Requests', 
       path: '/leave-requests', 
       icon: 'fas fa-calendar-alt',
-      allowedRoles: ['admin', 'HR_STAFF', 'department_manager', 'employee']
+      allowedRoles: ['admin', 'HR_STAFF', 'DEPARTMENT_HEAD', 'employee']
     },
     { 
       name: 'Payroll', 
@@ -60,7 +60,7 @@ const MainLayout: React.FC = () => {
       name: 'Reports', 
       path: '/reports', 
       icon: 'fas fa-chart-bar',
-      allowedRoles: ['admin', 'HR_STAFF', 'department_manager']
+      allowedRoles: ['admin', 'HR_STAFF', 'DEPARTMENT_HEAD']
     },
     { 
       name: 'Settings', 

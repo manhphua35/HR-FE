@@ -20,9 +20,9 @@ const Dashboard: React.FC = () => {
       return <AdminDashboard />;
     case 'HR_STAFF': // Use backend role names
       return <HrManagerDashboard />;
-    case 'DEPARTMENT_MANAGER': // Use backend role names
-      // Assuming department info is still needed, might need adjustment based on User type update
-      return <DepartmentManagerDashboard department={currentUser.department} />;
+    case 'DEPARTMENT_HEAD': // Use backend role names
+      // Đảm bảo rằng có thông tin phòng ban
+      return <DepartmentManagerDashboard departmentId={currentUser.departmentId?.toString()} />;
     case 'EMPLOYEE': // Use backend role names
       return <EmployeeDashboard userId={currentUser.id.toString()} />;
     default:

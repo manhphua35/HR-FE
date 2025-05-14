@@ -7,7 +7,7 @@ interface SummaryStats {
   totalEmployees: number;
   activeLeaves: number;
   ongoingTrainings: number;
-  totalSalary: number | null;
+  totalSalary: number;
   avgPerformance: number;
 }
 
@@ -16,7 +16,7 @@ interface DepartmentStatDetail {
   employeeCount: number;
   leaveCount: number;
   trainingCount: number;
-  totalSalary: number | null;
+  totalSalary: number;
   avgPerformance: number;
 }
 
@@ -26,9 +26,9 @@ interface DashboardData {
   departments: DepartmentStatDetail[];
 }
 
+// Interface cho dashboard của Trưởng phòng
 interface DepartmentStats {
   employeeCount: number;
-  activeProjects: number;
   pendingLeaveRequests: number;
   averagePerformance: number;
   attendance: {
@@ -37,30 +37,62 @@ interface DepartmentStats {
   };
   projectCompletion: number;
   trainingProgress: number;
+  activeProjects: number;
 }
 
-interface EmployeeStats {
-  workingHours: number;
-  attendanceRate: number;
-  performanceScore: number;
-  leaveBalance: number;
-  schedule: Array<Schedule>;
-  activities: Array<Activity>;
-}
-
-interface Schedule {
+// Interface cho dữ liệu nhân viên
+interface IEmployeeProfile {
   id: number;
-  title: string;
-  date: string;
-  type: 'meeting' | 'training' | 'deadline' | 'other';
+  fullName: string;
+  email: string;
+  department?: string;
+  position?: string;
 }
 
-interface Activity {
+interface IAttendanceSummary {
+  totalWorkDays: number;
+  presentDays: number;
+  absentDays: number;
+  lateDays: number;
+}
+
+interface ILeaveSummary {
+  used: number;
+  remaining: number;
+  pending: number;
+}
+
+interface IPayrollSummary {
+  month: number;
+  year: number;
+  basicSalary: string;
+  totalAllowance: string;
+  totalDeduction: string;
+  netSalary: string;
+}
+
+interface ITrainingCourse {
   id: number;
-  type: 'user' | 'document' | 'calendar' | 'notification' | 'other';
-  title: string;
-  description: string;
-  timestamp: string;
+  name: string;
+  startDate: string | Date;
+  endDate: string | Date;
+  progress: number;
+}
+
+interface IPerformanceSummary {
+  period: string;
+  overallScore: string;
+  strengths: string[];
+  improvements: string[];
+}
+
+interface IEmployeeDashboardData {
+  employee: IEmployeeProfile;
+  attendance: IAttendanceSummary;
+  leaves: ILeaveSummary;
+  payroll: IPayrollSummary | null;
+  training: ITrainingCourse[];
+  performance: IPerformanceSummary | null;
 }
 
 export class DashboardService {
@@ -87,33 +119,64 @@ export class DashboardService {
 
   // Updated other methods to use axiosInstance for consistency
   // Note: Endpoints for these might also need verification against backend routes
-  // TODO: Xác minh kiểu trả về thực tế cho getHrStats nếu endpoint /dashboard/hr tồn tại và khác /reports/dashboard-data
-  static async getHrStats(): Promise<any> {
-    const response = await axiosInstance.get<ApiResponse<any>>(
-      '/dashboard/hr'
-    );
-    return response.data.data;
+  static async getHrStats(): Promise<DashboardData> {
+    try {
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+      
+      // Sử dụng endpoint dashboard-data thay vì /dashboard/hr không tồn tại
+      const response = await axiosInstance.get<ApiResponse<DashboardData>>(
+        '/reports/dashboard-data',
+        {
+          params: { month: currentMonth, year: currentYear }
+        }
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching HR dashboard data:', error);
+      throw error;
+    }
   }
 
+  // Lấy dữ liệu cho dashboard của Trưởng phòng
   static async getDepartmentStats(departmentId: string): Promise<DepartmentStats> {
-    const response = await axiosInstance.get<ApiResponse<DepartmentStats>>(
-      `/dashboard/department/${departmentId}`
-    );
-    return response.data.data;
+    try {
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+      
+      const response = await axiosInstance.get<ApiResponse<DepartmentStats>>(
+        `/reports/department-dashboard/${departmentId}`,
+        {
+          params: { month: currentMonth, year: currentYear }
+        }
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching department stats:', error);
+      throw error;
+    }
   }
 
-  static async getEmployeeStats(employeeId: string): Promise<EmployeeStats> {
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1;
-    const currentYear = now.getFullYear();
-    
-    const response = await axiosInstance.get<ApiResponse<EmployeeStats>>(
-      `/reports/employee-dashboard/${employeeId}`,
-      {
-        params: { month: currentMonth, year: currentYear }
-      }
-    );
-    return response.data.data;
+  // Lấy dữ liệu cho dashboard của Nhân viên
+  static async getEmployeeStats(employeeId: string): Promise<IEmployeeDashboardData> {
+    try {
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+      
+      const response = await axiosInstance.get<ApiResponse<IEmployeeDashboardData>>(
+        `/reports/employee-dashboard/${employeeId}`,
+        {
+          params: { month: currentMonth, year: currentYear }
+        }
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching employee stats:', error);
+      throw error;
+    }
   }
 
   // Commented out as no corresponding backend endpoint was found
@@ -131,7 +194,11 @@ export type {
   DepartmentStatDetail,
   DashboardData,
   DepartmentStats,
-  EmployeeStats,
-  Schedule,
-  Activity
+  IEmployeeDashboardData,
+  IEmployeeProfile,
+  IAttendanceSummary,
+  ILeaveSummary,
+  IPayrollSummary,
+  ITrainingCourse,
+  IPerformanceSummary
 };

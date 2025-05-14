@@ -23,7 +23,7 @@ import Training from '../pages/Training';
 import TrainingDetail from '../pages/TrainingDetail';
 
 // Define roles type (matching backend response)
-type Role = 'SYSTEM_ADMIN' | 'HR_STAFF' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
+type Role = 'SYSTEM_ADMIN' | 'HR_STAFF' | 'DEPARTMENT_HEAD' | 'EMPLOYEE';
 
 // Interface for route permissions
 interface RoutePermissions {
@@ -67,12 +67,12 @@ const AppRoutes = () => {
     {
       path: "/dashboard",
       element: <Dashboard />,
-      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE'] // Use backend role names
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_HEAD', 'EMPLOYEE'] // Use backend role names
     },
     {
       path: "/employees",
       element: <Employees />,
-      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER'] // Use backend role names
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_HEAD'] // Use backend role names
     },
     {
       path: "/departments",
@@ -82,12 +82,12 @@ const AppRoutes = () => {
     {
       path: "/attendance",
       element: <Attendance />,
-      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE'] // Use backend role names
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_HEAD', 'EMPLOYEE'] // Use backend role names
     },
     {
       path: "/performance",
       element: <Performance />,
-      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE'] // Use backend role names
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_HEAD', 'EMPLOYEE'] // Use backend role names
     },
     {
       path: "/payroll",
@@ -97,27 +97,27 @@ const AppRoutes = () => {
     {
       path: "/leave",
       element: <Leave />,
-      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE'] // Use backend role names
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_HEAD', 'EMPLOYEE'] // Use backend role names
     },
     // {
     //   path: "/reports",
     //   element: <Reports />,
-    //   allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER'] // Use backend role names
+    //   allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_HEAD'] // Use backend role names
     // },
     {
       path: "/settings",
       element: <Settings />,
-      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE']
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_HEAD', 'EMPLOYEE']
     },
     {
       path: "training",
       element: <Training />,
-      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE']
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_HEAD', 'EMPLOYEE']
     },
     {
       path: "training/:id",
       element: <TrainingDetail />,
-      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE']
+      allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_HEAD', 'EMPLOYEE']
     }
   ];
 

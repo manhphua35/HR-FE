@@ -1,35 +1,37 @@
 import React, { useEffect, useState } from 'react';
-import { DashboardService } from '../../services/DashboardService';
+import { DashboardService, DepartmentStats } from '../../services/DashboardService';
+import DepartmentEmployees from './DepartmentEmployees';
 
 interface DepartmentManagerDashboardProps {
-  department?: string;
+  departmentId?: string;
 }
 
-const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({ department }) => {
-  const [stats, setStats] = useState<any>(null);
+const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({ departmentId }) => {
+  const [stats, setStats] = useState<DepartmentStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!department) {
+      if (!departmentId) {
         setError('Department ID is required');
         setLoading(false);
         return;
       }
 
       try {
-        const statsData = await DashboardService.getDepartmentStats(department);
+        const statsData = await DashboardService.getDepartmentStats(departmentId);
         setStats(statsData);
         setLoading(false);
       } catch (err) {
         setError('Failed to fetch department dashboard data');
+        console.error(err);
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [department]);
+  }, [departmentId]);
 
   if (loading) return <div className="p-4">Loading...</div>;
   if (error) return <div className="p-4 text-red-500">{error}</div>;
@@ -38,7 +40,7 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
   return (
     <div>
       <h2 className="text-2xl font-bold text-gray-800 mb-5">
-        Trang chủ Quản lý {department || 'Phòng ban'} 
+        Trang chủ Quản lý Phòng ban
       </h2>
       
       {/* Stats Cards */}
@@ -49,9 +51,9 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
               <i className="fas fa-users text-xl"></i>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Department Staff</p>
+              <p className="text-sm text-gray-500">Nhân viên</p>
               <h3 className="text-2xl font-bold">{stats.employeeCount}</h3>
-              <p className="text-sm text-gray-500">Active Members</p>
+              <p className="text-sm text-gray-500">Đang hoạt động</p>
             </div>
           </div>
         </div>
@@ -62,9 +64,9 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
               <i className="fas fa-tasks text-xl"></i>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Active Projects</p>
+              <p className="text-sm text-gray-500">Dự án đang hoạt động</p>
               <h3 className="text-2xl font-bold">{stats.activeProjects}</h3>
-              <p className="text-sm text-green-500">On Track</p>
+              <p className="text-sm text-green-500">Đang tiến hành</p>
             </div>
           </div>
         </div>
@@ -75,9 +77,9 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
               <i className="fas fa-calendar-alt text-xl"></i>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Leave Requests</p>
+              <p className="text-sm text-gray-500">Đơn nghỉ phép</p>
               <h3 className="text-2xl font-bold">{stats.pendingLeaveRequests}</h3>
-              <p className="text-sm text-yellow-500">Pending Review</p>
+              <p className="text-sm text-yellow-500">Đang chờ duyệt</p>
             </div>
           </div>
         </div>
@@ -88,9 +90,9 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
               <i className="fas fa-chart-line text-xl"></i>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Performance</p>
+              <p className="text-sm text-gray-500">Hiệu suất phòng ban</p>
               <h3 className="text-2xl font-bold">{stats.averagePerformance}%</h3>
-              <p className="text-sm text-purple-500">Department Average</p>
+              <p className="text-sm text-purple-500">Đánh giá trung bình</p>
             </div>
           </div>
         </div>
@@ -100,13 +102,13 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">Team Overview</h3>
+            <h3 className="text-lg font-semibold text-gray-800">Tổng quan nhóm</h3>
           </div>
           <div className="p-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Present Today</p>
+                  <p className="text-sm font-medium text-gray-900">Chấm công hôm nay</p>
                   <div className="flex items-center mt-1">
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
@@ -123,7 +125,7 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
 
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Project Completion</p>
+                  <p className="text-sm font-medium text-gray-900">Hoàn thành kế hoạch</p>
                   <div className="flex items-center mt-1">
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
@@ -140,7 +142,7 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
 
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Training Progress</p>
+                  <p className="text-sm font-medium text-gray-900">Tiến độ đào tạo</p>
                   <div className="flex items-center mt-1">
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
@@ -160,7 +162,7 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
 
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">Upcoming Tasks</h3>
+            <h3 className="text-lg font-semibold text-gray-800">Nhiệm vụ sắp tới</h3>
           </div>
           <div className="p-6">
             <ul className="divide-y divide-gray-200">
@@ -168,11 +170,11 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
                 <li className="py-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">Review Leave Requests</p>
-                      <p className="text-sm text-gray-500">{stats.pendingLeaveRequests} pending requests</p>
+                      <p className="text-sm font-medium text-gray-900">Duyệt đơn nghỉ phép</p>
+                      <p className="text-sm text-gray-500">{stats.pendingLeaveRequests} đơn đang chờ</p>
                     </div>
                     <span className="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                      High Priority
+                      Ưu tiên cao
                     </span>
                   </div>
                 </li>
@@ -180,28 +182,33 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
               <li className="py-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Team Meeting</p>
-                    <p className="text-sm text-gray-500">Tomorrow at 10:00 AM</p>
+                    <p className="text-sm font-medium text-gray-900">Họp đội nhóm</p>
+                    <p className="text-sm text-gray-500">Ngày mai lúc 10:00</p>
                   </div>
                   <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                    Scheduled
+                    Đã lên lịch
                   </span>
                 </div>
               </li>
               <li className="py-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Project Deadline</p>
-                    <p className="text-sm text-gray-500">Project X due in 2 weeks</p>
+                    <p className="text-sm font-medium text-gray-900">Deadline dự án</p>
+                    <p className="text-sm text-gray-500">Còn 2 tuần nữa</p>
                   </div>
                   <span className="px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                    Upcoming
+                    Sắp tới
                   </span>
                 </div>
               </li>
             </ul>
           </div>
         </div>
+      </div>
+
+      {/* Danh sách nhân viên trong phòng ban */}
+      <div className="mt-6">
+        <DepartmentEmployees departmentId={departmentId} />
       </div>
     </div>
   );

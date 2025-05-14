@@ -92,7 +92,7 @@ const Performance: React.FC = () => {
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
   const [loadingReviewDetails, setLoadingReviewDetails] = useState(false);
 
-  const isManager = currentUser?.role?.roleType === 'DEPARTMENT_MANAGER';
+  const isManager = currentUser?.role?.roleType === 'DEPARTMENT_HEAD';
   const isSystemAdmin = currentUser?.role?.roleType === 'SYSTEM_ADMIN';
   const isHRStaff = currentUser?.role?.roleType === 'HR_STAFF';
   const isAdmin = isSystemAdmin || isHRStaff;

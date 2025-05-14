@@ -12,7 +12,7 @@ import React from 'react';
 // import Settings from '../pages/Settings';
 
 // Định nghĩa kiểu Role (khớp với backend)
-export type Role = 'SYSTEM_ADMIN' | 'HR_STAFF' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
+export type Role = 'SYSTEM_ADMIN' | 'HR_STAFF' | 'DEPARTMENT_HEAD' | 'EMPLOYEE';
 
 // Interface cho cấu hình quyền truy cập route
 export interface RoutePermissionConfig {
@@ -29,14 +29,14 @@ export interface RoutePermissionConfig {
 export const routePermissions: RoutePermissionConfig[] = [
   {
     path: "/dashboard",
-    allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE'],
+    allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_HEAD', 'EMPLOYEE'],
     label: "Trang chủ", // Đổi thành Trang chủ
     id: "dashboard"
     // icon: DashboardIcon // Sẽ import icon vào Sidebar trực tiếp
   },
   {
     path: "/employees",
-    allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER'],
+    allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_HEAD'],
     label: "Nhân viên", // Đổi thành Nhân viên
     id: "employees"
     // icon: EmployeesIcon
@@ -50,14 +50,14 @@ export const routePermissions: RoutePermissionConfig[] = [
   },
   {
     path: "/attendance",
-    allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE'],
+    allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_HEAD', 'EMPLOYEE'],
     label: "Chấm công", // Đổi thành Chấm công
     id: "attendance"
     // icon: AttendanceIcon // Cần tạo icon nếu muốn hiển thị
   },
   {
     path: "/performance",
-    allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE'],
+    allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_HEAD', 'EMPLOYEE'],
     label: "Hiệu suất", // Đổi thành Hiệu suất
     id: "performance"
     // icon: PerformanceIcon // Cần tạo icon nếu muốn hiển thị
@@ -71,21 +71,21 @@ export const routePermissions: RoutePermissionConfig[] = [
   },
   {
     path: "/leave",
-    allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE'],
+    allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_HEAD', 'EMPLOYEE'],
     label: "Nghỉ phép", // Đổi thành Nghỉ phép
     id: "leave"
     // icon: LeaveIcon // Cần tạo icon nếu muốn hiển thị
   },
   {
     path: "/reports",
-    allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER'],
+    allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_HEAD'],
     label: "Báo cáo", // Đổi thành Báo cáo
     id: "reports"
     // icon: ReportsIcon
   },
   {
     path: "/settings",
-    allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_MANAGER', 'EMPLOYEE'], // Cho phép tất cả các vai trò
+    allowedRoles: ['SYSTEM_ADMIN', 'HR_STAFF', 'DEPARTMENT_HEAD', 'EMPLOYEE'], // Cho phép tất cả các vai trò
     label: "Cài đặt", // Đổi thành Cài đặt
     id: "settings"
     // icon: SettingsIcon

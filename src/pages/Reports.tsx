@@ -67,10 +67,10 @@
 
 //   // Determine user roles for conditional fetching and rendering using string literals from AuthContext
 //   // Assuming 'HR_STAFF' in frontend maps to 'HR_STAFF' in backend routes
-//   // Assuming 'DEPARTMENT_MANAGER' in frontend maps to 'DEPARTMENT_HEAD' in backend routes
+//   // Assuming 'DEPARTMENT_HEAD' in frontend maps to 'DEPARTMENT_HEAD' in backend routes
 //   const userRole = currentUser?.role?.roleType;
 //   const isHrOrAdmin = userRole === 'HR_STAFF' || userRole === 'SYSTEM_ADMIN';
-//   const isDeptHead = userRole === 'DEPARTMENT_MANAGER';
+//   const isDeptHead = userRole === 'DEPARTMENT_HEAD';
 
 //   useEffect(() => {
 //     if (currentUser) { // Only fetch if user data is available

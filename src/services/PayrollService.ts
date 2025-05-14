@@ -36,9 +36,39 @@ export interface Payroll {
   };
 }
 
+export interface PayrollHistoryChange {
+  field: string;
+  oldValue: any;
+  newValue: any;
+}
+
+export interface UserInfo {
+  id: number;
+  fullName: string;
+  email: string;
+  department?: string;
+  position?: string;
+}
+
+export interface PayrollHistoryEntry {
+  timestamp: string;
+  updatedBy?: number;
+  updatedByUser?: UserInfo;
+  changes: PayrollHistoryChange[];
+  reason?: string;
+  note?: string;
+}
+
 export interface PayrollResponse {
   message: string;
   data: Payroll[];
+}
+
+export enum ComponentType {
+  ALLOWANCE = "ALLOWANCE",
+  DEDUCTION = "DEDUCTION",
+  BENEFIT = "BENEFIT",
+  BONUS = "BONUS"
 }
 
 export interface PayrollUpdateData {
@@ -46,6 +76,11 @@ export interface PayrollUpdateData {
   totalAllowance?: number;
   totalBenefit?: number;
   note?: string;
+  deductionAmount?: number;
+  deductionNote?: string;
+  componentType?: ComponentType;
+  shouldAdd?: boolean;
+  baseSalary?: number;
 }
 
 interface ApiResponse<T> {
@@ -109,6 +144,26 @@ export const PayrollService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching payroll detail:', error);
+      throw error;
+    }
+  },
+
+  async getPayrollHistory(payrollId: number): Promise<PayrollHistoryEntry[]> {
+    try {
+      const response = await axiosInstance.get<PayrollHistoryEntry[]>(`/payroll/history/${payrollId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching payroll history:', error);
+      throw error;
+    }
+  },
+
+  async deletePayrollHistoryEntry(payrollId: number, timestamp: string): Promise<{ success: boolean }> {
+    try {
+      const response = await axiosInstance.delete<{ message: string, success: boolean }>(`/payroll/history/${payrollId}/${timestamp}`);
+      return { success: response.data.success };
+    } catch (error) {
+      console.error('Error deleting payroll history entry:', error);
       throw error;
     }
   }

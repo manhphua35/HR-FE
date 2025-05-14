@@ -5,6 +5,7 @@ import CreateEmployeeModal from '../components/modals/CreateEmployeeModal';
 import EditEmployeeModal from '../components/modals/EditEmployeeModal';
 import ViewEmployeeModal from '../components/modals/ViewEmployeeModal';
 import ConfirmDeleteModal from '../components/modals/ConfirmDeleteModal'; // Import modal xác nhận xóa
+import { useAuth } from '../contexts/AuthContext';
 
 // Định nghĩa các trạng thái có thể có để lọc, dựa trên trường `isActive` từ API
 const POSSIBLE_STATUSES = ['Đang làm việc', 'Đã nghỉ việc'];
@@ -37,14 +38,28 @@ const Employees: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage] = useState<number>(10); // Số nhân viên mỗi trang, có thể thay đổi
 
+  // Lấy thông tin người dùng hiện tại từ context
+  const { currentUser } = useAuth();
+
   useEffect(() => {
     fetchEmployees();
-  }, []);
+  }, [currentUser]);
 
   const fetchEmployees = async () => {
     try {
       setIsLoading(true);
-      const data = await EmployeeService.getAllEmployees();
+      
+      let data: Employee[] = [];
+      
+      // Kiểm tra vai trò người dùng
+      if (currentUser?.role?.roleType === "DEPARTMENT_HEAD" && currentUser?.departmentId) {
+        // Nếu là trưởng phòng, chỉ lấy nhân viên trong phòng ban của họ
+        data = await EmployeeService.getDepartmentEmployees(Number(currentUser.departmentId));
+      } else {
+        // Nếu là HR hoặc Admin, lấy tất cả nhân viên
+        data = await EmployeeService.getAllEmployees();
+      }
+      
       setEmployees(data);
       setError("");
     } catch (err) {

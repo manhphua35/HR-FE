@@ -22,7 +22,7 @@ const TrainingCourseModal: React.FC<TrainingCourseModalProps> = ({ course, onSav
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const { currentUser } = useAuth();
-  const isDepartmentHead = currentUser?.role?.roleType === 'DEPARTMENT_MANAGER';
+  const isDepartmentHead = currentUser?.role?.roleType === 'DEPARTMENT_HEAD';
 
   useEffect(() => {
     fetchDepartments();

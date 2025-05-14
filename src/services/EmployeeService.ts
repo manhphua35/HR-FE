@@ -90,6 +90,12 @@ export const EmployeeService = {
     return response.data.data;
   },
 
+  // Lấy danh sách nhân viên theo phòng ban
+  getDepartmentEmployees: async (departmentId: number): Promise<Employee[]> => {
+    const response = await axiosInstance.get<ApiResponse<Employee[]>>(`/users/department/${departmentId}`);
+    return response.data.data;
+  },
+
   // Cập nhật kiểu dữ liệu cho employeeData thành CreateEmployeePayload
   // Đảm bảo kiểu tham số là CreateEmployeePayload đã export
   createEmployee: async (employeeData: CreateEmployeePayload): Promise<Employee> => {
@@ -106,6 +112,12 @@ export const EmployeeService = {
     // Sử dụng axiosInstance
     const response = await axiosInstance.put<ApiResponse<Employee>>(`/users/update/${id}`, employeeData);
     return response.data.data;
+  },
+
+  // Cập nhật lương cơ bản của nhân viên
+  updateEmployeeBaseSalary: async (id: number, baseSalary: number): Promise<Employee> => {
+    // Sử dụng updateEmployee với chỉ trường baseSalary
+    return await EmployeeService.updateEmployee(id, { baseSalary: baseSalary.toString() });
   },
 
   deleteEmployee: async (id: number): Promise<void> => {

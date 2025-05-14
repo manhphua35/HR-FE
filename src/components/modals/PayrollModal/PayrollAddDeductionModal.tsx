@@ -1,60 +1,45 @@
 import React, { useState, useEffect } from 'react';
-import { Payroll } from '../../services/PayrollService';
 
 interface Employee {
   id: number;
   fullName: string;
-  baseSalary: string;
-  payrolls?: Payroll[];
+  payrolls?: { id: number; month: number; year: number }[];
 }
 
-interface PayrollComponentModalProps {
+interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => void;
-  title: string;
+  onSubmit: (data: { employeeId: number; deductionAmount: number; deductionNote: string }) => void;
   employees: Employee[];
-  selectedEmployee: number | null;
-  onSelectEmployee: (id: number) => void;
 }
 
-const PayrollComponentModal: React.FC<PayrollComponentModalProps> = ({
-  isOpen,
-  onClose,
-  onSubmit,
-  title,
-  employees,
-  selectedEmployee,
-  onSelectEmployee
-}) => {
+const PayrollAddDeductionModal: React.FC<Props> = ({ isOpen, onClose, onSubmit, employees }) => {
   const [formData, setFormData] = useState({
-    amount: '',
-    description: ''
+    employeeId: '',
+    deductionAmount: '',
+    deductionNote: ''
   });
-  const [selectedPayroll, setSelectedPayroll] = useState<number | null>(null);
 
   // Reset form when modal is closed
   useEffect(() => {
     if (!isOpen) {
       setFormData({
-        amount: '',
-        description: ''
+        employeeId: '',
+        deductionAmount: '',
+        deductionNote: ''
       });
-      setSelectedPayroll(null);
     }
   }, [isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
     onSubmit({
-      amount: parseFloat(formData.amount),
-      description: formData.description,
-      payrollId: selectedPayroll
+      employeeId: parseInt(formData.employeeId),
+      deductionAmount: parseFloat(formData.deductionAmount),
+      deductionNote: formData.deductionNote
     });
   };
-
-  // Lấy danh sách bảng lương của nhân viên được chọn
-  const employeePayrolls = employees.find(e => e.id === selectedEmployee)?.payrolls || [];
 
   if (!isOpen) return null;
 
@@ -66,7 +51,7 @@ const PayrollComponentModal: React.FC<PayrollComponentModalProps> = ({
           <div className="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
             <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
               <div className="flex justify-between items-center pb-4 mb-4 border-b">
-                <h3 className="text-xl font-semibold text-gray-800">{title}</h3>
+                <h3 className="text-xl font-semibold text-gray-800">Thêm khấu trừ</h3>
                 <button
                   onClick={onClose}
                   className="text-gray-400 hover:text-gray-500"
@@ -78,13 +63,13 @@ const PayrollComponentModal: React.FC<PayrollComponentModalProps> = ({
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="employee" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="employeeId" className="block text-sm font-medium text-gray-700 mb-2">
                     Nhân viên
                   </label>
                   <select
-                    id="employee"
-                    value={selectedEmployee || ''}
-                    onChange={(e) => onSelectEmployee(Number(e.target.value))}
+                    id="employeeId"
+                    value={formData.employeeId}
+                    onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
                     className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
                     required
                   >
@@ -97,55 +82,33 @@ const PayrollComponentModal: React.FC<PayrollComponentModalProps> = ({
                   </select>
                 </div>
 
-                {selectedEmployee && (
-                  <div>
-                    <label htmlFor="payroll" className="block text-sm font-medium text-gray-700 mb-2">
-                      Chọn bảng lương
-                    </label>
-                    <select
-                      id="payroll"
-                      value={selectedPayroll || ''}
-                      onChange={(e) => setSelectedPayroll(Number(e.target.value))}
-                      className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    >
-                      <option value="">Chọn bảng lương</option>
-                      {/* Hiển thị các bảng lương của nhân viên đã chọn */}
-                      {employeePayrolls.map((payroll) => (
-                        <option key={payroll.id} value={payroll.id}>
-                          Tháng {payroll.month}/{payroll.year}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
                 <div>
-                  <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-2">
-                    Số tiền thưởng
+                  <label htmlFor="deductionAmount" className="block text-sm font-medium text-gray-700 mb-2">
+                    Số tiền khấu trừ
                   </label>
                   <input
-                    id="amount"
+                    id="deductionAmount"
                     type="number"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    value={formData.deductionAmount}
+                    onChange={(e) => setFormData({ ...formData, deductionAmount: e.target.value })}
                     className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
                     required
                     min="0"
-                    step="1000"
+                    step="10000"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                    Ghi chú
+                  <label htmlFor="deductionNote" className="block text-sm font-medium text-gray-700 mb-2">
+                    Lý do khấu trừ
                   </label>
                   <textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    id="deductionNote"
+                    value={formData.deductionNote}
+                    onChange={(e) => setFormData({ ...formData, deductionNote: e.target.value })}
                     className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
                     rows={3}
+                    required
                   />
                 </div>
 
@@ -159,7 +122,7 @@ const PayrollComponentModal: React.FC<PayrollComponentModalProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700"
                   >
                     Lưu
                   </button>
@@ -173,4 +136,4 @@ const PayrollComponentModal: React.FC<PayrollComponentModalProps> = ({
   );
 };
 
-export default PayrollComponentModal;
+export default PayrollAddDeductionModal;

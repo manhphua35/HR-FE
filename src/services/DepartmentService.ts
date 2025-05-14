@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_URL } from '../config';
+import axiosInstance from '../config/axios';
 
 export interface Department {
   id: number;
@@ -18,38 +19,35 @@ export interface DepartmentSummary {
 
 export const DepartmentService = {
   getDepartments: async (): Promise<Department[]> => {
-    const response = await axios.get<{ data: Department[] }>(
-      `${API_URL}/departments/list`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      }
+    const response = await axiosInstance.get<{ data: Department[] }>(
+      `/departments/list`
     );
     return response.data.data;
   },
 
   getDepartmentSummary: async (): Promise<DepartmentSummary> => {
-    const response = await axios.get<{ data: DepartmentSummary }>(
-      `${API_URL}/departments/list/summary`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      }
+    const response = await axiosInstance.get<{ data: DepartmentSummary }>(
+      `/departments/list/summary`
     );
     return response.data.data;
   },
 
+  getDepartmentById: async (id: number): Promise<Department | null> => {
+    try {
+      const response = await axiosInstance.get<{ data: Department }>(
+        `/departments/detail/${id}`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error(`Error fetching department with ID ${id}:`, error);
+      return null;
+    }
+  },
+
   createDepartment: async (data: Omit<Department, 'id'>): Promise<Department> => {
-    const response = await axios.post<{ data: Department }>(
-      `${API_URL}/departments/list`,
-      data,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      }
+    const response = await axiosInstance.post<{ data: Department }>(
+      `/departments/list`,
+      data
     );
     return response.data.data;
   },
@@ -58,26 +56,16 @@ export const DepartmentService = {
     id: number,
     data: Partial<Department>
   ): Promise<Department> => {
-    const response = await axios.put<{ data: Department }>(
-      `${API_URL}/departments/list/${id}`,
-      data,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      }
+    const response = await axiosInstance.put<{ data: Department }>(
+      `/departments/list/${id}`,
+      data
     );
     return response.data.data;
   },
 
   deleteDepartment: async (id: number): Promise<void> => {
-    await axios.delete(
-      `${API_URL}/departments/list/${id}`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('accessToken')}`
-        }
-      }
+    await axiosInstance.delete(
+      `/departments/list/${id}`
     );
   }
 };

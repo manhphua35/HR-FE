@@ -76,7 +76,7 @@ export interface User {
   fullName: string;
   role: {
     id: number;
-    roleType: 'SYSTEM_ADMIN' | 'HR_STAFF' | 'HR_STAFF' | 'DEPARTMENT_MANAGER' | 'EMPLOYEE';
+    roleType: 'SYSTEM_ADMIN' | 'HR_STAFF' | 'DEPARTMENT_HEAD' | 'EMPLOYEE';
     name: string;
     description: string;
   };

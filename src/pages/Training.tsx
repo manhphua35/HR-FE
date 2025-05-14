@@ -36,7 +36,7 @@ const Training: React.FC<TrainingProps> = () => {
   // Kiểm tra quyền hạn
   const isAdmin = currentUser?.role?.roleType === 'SYSTEM_ADMIN';
   const isHR = currentUser?.role?.roleType === 'HR_STAFF';
-  const isDepartmentHead = currentUser?.role?.roleType === 'DEPARTMENT_MANAGER';
+  const isDepartmentHead = currentUser?.role?.roleType === 'DEPARTMENT_HEAD';
   const canManageCourses = isAdmin || isHR || isDepartmentHead;
 
   useEffect(() => {
@@ -125,7 +125,7 @@ const Training: React.FC<TrainingProps> = () => {
       setError(null); // Clear previous errors
 
       let dataToSend = { ...courseData };
-      const isDepartmentHead = currentUser?.role?.roleType === 'DEPARTMENT_MANAGER';
+      const isDepartmentHead = currentUser?.role?.roleType === 'DEPARTMENT_HEAD';
 
       if (isDepartmentHead) {
         if (!currentUser?.departmentId) {
