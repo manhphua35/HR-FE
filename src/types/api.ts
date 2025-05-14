@@ -100,19 +100,19 @@ export interface PerformancePlan {
   description: string;
   startDate: string;
   endDate: string;
-  departmentId: number;
+  departments?: {
+    id: number;
+    name: string;
+  }[];
   createdBy: number;
   status: string;
+  isCompanyWide?: boolean;
   criteria: {
     id: number;
     name: string;
     weight: number;
     description: string;
   }[];
-  department?: {
-    id: number;
-    name: string;
-  };
   creator?: {
     id: number;
     fullName: string;
@@ -166,4 +166,18 @@ export interface Notification {
   message: string;
   isRead: boolean;
   createdAt: string;
+}
+
+export interface Employee {
+  id: number;
+  fullName: string;
+  email?: string;
+  departmentId?: number;
+  departmentName?: string;
+  position?: string;
+  isActive?: boolean;
+  department?: {
+    id: number;
+    name: string;
+  };
 }

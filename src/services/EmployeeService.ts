@@ -79,7 +79,6 @@ interface ApiResponse<T> {
 
 export const EmployeeService = {
   getAllEmployees: async (): Promise<Employee[]> => {
-    // Sử dụng axiosInstance
     const response = await axiosInstance.get<ApiResponse<Employee[]>>(`/users/list`);
     return response.data.data;
   },

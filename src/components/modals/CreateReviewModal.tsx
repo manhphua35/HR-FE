@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
+import { EmployeeService, Employee } from '../../services/EmployeeService';
+import { DepartmentService, Department } from '../../services/DepartmentService';
 
 interface CreateReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   planId: number;
+  isCompanyWide?: boolean; // Thêm prop để xác định kế hoạch là cho toàn công ty hay không
   criteria: {
     id: number;
     name: string;
     weight: number;
     description: string;
   }[];
+  employeeId?: number | null; // Thêm prop employeeId để chọn sẵn nhân viên
   onSubmit: (data: {
     employeeId: number;
     reviewDate: string;
@@ -32,15 +36,14 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
   isOpen,
   onClose,
   planId,
+  isCompanyWide = false,
   criteria,
+  employeeId = null,
   onSubmit
 }) => {
-  const [employees, setEmployees] = useState<{ id: number; name: string }[]>([
-    { id: 1, name: 'Nhân viên A' },
-    { id: 2, name: 'Nhân viên B' },
-    { id: 3, name: 'Nhân viên C' },
-    { id: 4, name: 'Nhân viên D' }
-  ]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<number | null>(null);
   const [reviewDate, setReviewDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [scores, setScores] = useState<{ criteriaId: number; score: number; comment: string }[]>([]);
@@ -48,8 +51,42 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
   const [strengths, setStrengths] = useState<string>('');
   const [weaknesses, setWeaknesses] = useState<string>('');
   const [improvement, setImprovement] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Initialize scores when criteria changes
+  // Lấy danh sách phòng ban nếu kế hoạch là cho toàn công ty và không có employeeId được chỉ định
+  useEffect(() => {
+    if (isOpen && isCompanyWide && !employeeId) {
+      fetchDepartments();
+    }
+  }, [isOpen, isCompanyWide, employeeId]);
+
+  // Reset form khi mở modal và thiết lập nhân viên nếu có employeeId
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedDepartmentId(null);
+      setSelectedEmployeeId(employeeId);
+      setReviewDate(new Date().toISOString().split('T')[0]);
+      setComments('');
+      setStrengths('');
+      setWeaknesses('');
+      setImprovement('');
+      setError(null);
+
+      // Nếu không có employeeId được chỉ định
+      if (!employeeId) {
+        // Nếu không phải kế hoạch toàn công ty, tự động lấy danh sách nhân viên
+        if (!isCompanyWide) {
+          fetchEmployees();
+        }
+      } else {
+        // Nếu có employeeId, lấy thông tin nhân viên để hiển thị
+        fetchEmployeeById(employeeId);
+      }
+    }
+  }, [isOpen, isCompanyWide, employeeId]);
+
+  // Khởi tạo scores khi criteria thay đổi
   useEffect(() => {
     if (criteria.length > 0) {
       setScores(criteria.map(criterion => ({
@@ -59,6 +96,98 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
       })));
     }
   }, [criteria]);
+
+  // Lấy danh sách nhân viên khi phòng ban thay đổi
+  useEffect(() => {
+    if (selectedDepartmentId) {
+      fetchEmployeesByDepartment(selectedDepartmentId);
+    }
+  }, [selectedDepartmentId]);
+
+  const fetchDepartments = async () => {
+    try {
+      setIsLoading(true);
+      const data = await DepartmentService.getDepartments();
+      setDepartments(data);
+      setIsLoading(false);
+    } catch (err) {
+      console.error('Lỗi khi lấy danh sách phòng ban:', err);
+      setError('Không thể tải danh sách phòng ban');
+      setIsLoading(false);
+    }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      setIsLoading(true);
+      const data = await EmployeeService.getAllEmployees();
+      const activeEmployees = data.filter(emp => emp.isActive);
+      setEmployees(activeEmployees);
+      setIsLoading(false);
+    } catch (err) {
+      console.error('Lỗi khi lấy danh sách nhân viên:', err);
+      setError('Không thể tải danh sách nhân viên');
+      setIsLoading(false);
+    }
+  };
+
+  const fetchEmployeesByDepartment = async (departmentId: number) => {
+    try {
+      setIsLoading(true);
+      setEmployees([]);
+      setSelectedEmployeeId(null);
+      const data = await EmployeeService.getDepartmentEmployees(departmentId);
+      const activeEmployees = data.filter(emp => emp.isActive);
+      setEmployees(activeEmployees);
+      setIsLoading(false);
+    } catch (err) {
+      console.error(`Lỗi khi lấy danh sách nhân viên phòng ban ${departmentId}:`, err);
+      setError('Không thể tải danh sách nhân viên theo phòng ban');
+      setIsLoading(false);
+    }
+  };
+
+  const fetchEmployeeById = async (id: number) => {
+    try {
+      setIsLoading(true);
+      const employee = await EmployeeService.getEmployeeById(id);
+      if (employee) {
+        setEmployees([employee]);
+        setSelectedEmployeeId(employee.id);
+        
+        // Nếu nhân viên thuộc một phòng ban và kế hoạch là toàn công ty
+        if (employee.departmentId && isCompanyWide) {
+          setSelectedDepartmentId(employee.departmentId);
+          // Lấy danh sách phòng ban để hiển thị
+          await fetchDepartments();
+        }
+      }
+      setIsLoading(false);
+    } catch (err) {
+      console.error(`Lỗi khi lấy thông tin nhân viên ${id}:`, err);
+      setError('Không thể tải thông tin nhân viên');
+      setIsLoading(false);
+    }
+  };
+
+  const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const departmentId = parseInt(e.target.value, 10);
+    if (!isNaN(departmentId)) {
+      setSelectedDepartmentId(departmentId);
+    } else {
+      setSelectedDepartmentId(null);
+      setEmployees([]);
+    }
+  };
+
+  const handleEmployeeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const employeeId = parseInt(e.target.value, 10);
+    if (!isNaN(employeeId)) {
+      setSelectedEmployeeId(employeeId);
+    } else {
+      setSelectedEmployeeId(null);
+    }
+  };
 
   const handleScoreChange = (criteriaId: number, field: 'score' | 'comment', value: string | number) => {
     setScores(prevScores => 
@@ -77,7 +206,7 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
     e.preventDefault();
     
     if (!selectedEmployeeId) {
-      alert('Vui lòng chọn nhân viên');
+      setError('Vui lòng chọn nhân viên');
       return;
     }
 
@@ -104,19 +233,62 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Tạo đánh giá hiệu suất">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Phần chọn phòng ban (chỉ hiển thị nếu là kế hoạch toàn công ty và không có employeeId được chỉ định) */}
+        {isCompanyWide && !employeeId && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Chọn phòng ban</label>
+            <select
+              value={selectedDepartmentId || ''}
+              onChange={handleDepartmentChange}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              required
+            >
+              <option value="">-- Chọn phòng ban --</option>
+              {departments.map(department => (
+                <option key={department.id} value={department.id}>{department.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Phần chọn nhân viên (chỉ hiển thị nếu không có employeeId được chỉ định) */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">Chọn nhân viên</label>
-          <select
-            value={selectedEmployeeId || ''}
-            onChange={(e) => setSelectedEmployeeId(Number(e.target.value))}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            required
-          >
-            <option value="">-- Chọn nhân viên --</option>
-            {employees.map(employee => (
-              <option key={employee.id} value={employee.id}>{employee.name}</option>
-            ))}
-          </select>
+          <label className="block text-sm font-medium text-gray-700">
+            {employeeId ? 'Nhân viên được đánh giá' : 'Chọn nhân viên'}
+          </label>
+          {isLoading ? (
+            <div className="flex items-center justify-center p-4">
+              <i className="fas fa-spinner fa-spin mr-2"></i>
+              <span>Đang tải...</span>
+            </div>
+          ) : (
+            employeeId && employees.length === 1 ? (
+              <div className="p-2 border rounded bg-gray-50">
+                <span className="font-medium">{employees[0]?.fullName}</span>
+                {employees[0]?.department && (
+                  <span className="text-gray-600 ml-2">({employees[0].department.name})</span>
+                )}
+              </div>
+            ) : (
+              <select
+                value={selectedEmployeeId || ''}
+                onChange={handleEmployeeChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                required
+                disabled={isCompanyWide && !selectedDepartmentId}
+              >
+                <option value="">-- Chọn nhân viên --</option>
+                {employees.map(employee => (
+                  <option key={employee.id} value={employee.id}>
+                    {employee.fullName} {employee.department ? `(${employee.department.name})` : ''}
+                  </option>
+                ))}
+              </select>
+            )
+          )}
+          {error && (
+            <p className="mt-1 text-sm text-red-600">{error}</p>
+          )}
         </div>
 
         <div>
@@ -225,8 +397,13 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
           <button
             type="submit"
             className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
+            disabled={isLoading}
           >
-            Tạo đánh giá
+            {isLoading ? (
+              <><i className="fas fa-spinner fa-spin mr-2"></i> Đang xử lý...</>
+            ) : (
+              'Tạo đánh giá'
+            )}
           </button>
         </div>
       </form>

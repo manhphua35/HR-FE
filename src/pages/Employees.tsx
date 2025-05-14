@@ -482,9 +482,8 @@ const Employees: React.FC = () => {
             }
           }}
           onConfirm={executeDelete}
-          itemName={deletingEmployeeInfo.name}
-          itemType="nhân viên"
-          isLoading={isDeleting} // Truyền trạng thái loading
+          title="Xác nhận xóa nhân viên"
+          message={`Bạn có chắc chắn muốn xóa nhân viên "${deletingEmployeeInfo.name}"? Hành động này không thể hoàn tác.`}
         />
       )}
     </div>

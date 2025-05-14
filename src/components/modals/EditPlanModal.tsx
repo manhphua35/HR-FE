@@ -3,10 +3,11 @@ import Modal from './Modal';
 import { PerformancePlan } from '../../types/api';
 import { Department } from '../../services/DepartmentService';
 
-interface CreatePlanModalProps {
+interface EditPlanModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: Omit<PerformancePlan, 'id' | 'departments' | 'createdBy'> & { 
+  plan: PerformancePlan;
+  onSubmit: (planId: number, data: Omit<PerformancePlan, 'id' | 'departments' | 'createdBy'> & { 
     departmentIds?: number[], 
     isCompanyWide?: boolean 
   }) => void;
@@ -15,22 +16,25 @@ interface CreatePlanModalProps {
   onSelectDepartments?: (ids: number[]) => void;
 }
 
-const CreatePlanModal: React.FC<CreatePlanModalProps> = ({ 
+const EditPlanModal: React.FC<EditPlanModalProps> = ({ 
   isOpen, 
   onClose, 
+  plan,
   onSubmit,
   isAdmin = false,
   departments = [],
   onSelectDepartments 
 }) => {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<number[]>([]);
+  const [title, setTitle] = useState(plan.title || '');
+  const [description, setDescription] = useState(plan.description || '');
+  const [startDate, setStartDate] = useState(plan.startDate?.substring(0, 10) || '');
+  const [endDate, setEndDate] = useState(plan.endDate?.substring(0, 10) || '');
+  const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<number[]>(
+    plan.departments?.map(d => d.id) || []
+  );
   const [departmentError, setDepartmentError] = useState<string | null>(null);
-  const [isCompanyWide, setIsCompanyWide] = useState(false);
-  const [criteria, setCriteria] = useState([
+  const [isCompanyWide, setIsCompanyWide] = useState(plan.isCompanyWide || false);
+  const [criteria, setCriteria] = useState(plan.criteria || [
     { id: 1, name: 'Kỹ năng chuyên môn', weight: 30, description: 'Đánh giá kỹ năng chuyên môn và kiến thức nghiệp vụ' },
     { id: 2, name: 'Hiệu suất làm việc', weight: 30, description: 'Đánh giá kết quả công việc và hiệu quả làm việc' },
     { id: 3, name: 'Tinh thần làm việc', weight: 20, description: 'Đánh giá thái độ, tinh thần làm việc và đóng góp cho tập thể' },
@@ -40,21 +44,21 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({
   // Reset form khi mở modal
   useEffect(() => {
     if (isOpen) {
-      setTitle('');
-      setDescription('');
-      setStartDate('');
-      setEndDate('');
-      setSelectedDepartmentIds([]);
+      setTitle(plan.title || '');
+      setDescription(plan.description || '');
+      setStartDate(plan.startDate?.substring(0, 10) || '');
+      setEndDate(plan.endDate?.substring(0, 10) || '');
+      setSelectedDepartmentIds(plan.departments?.map(d => d.id) || []);
       setDepartmentError(null);
-      setIsCompanyWide(false);
-      setCriteria([
+      setIsCompanyWide(plan.isCompanyWide || false);
+      setCriteria(plan.criteria || [
         { id: 1, name: 'Kỹ năng chuyên môn', weight: 30, description: 'Đánh giá kỹ năng chuyên môn và kiến thức nghiệp vụ' },
         { id: 2, name: 'Hiệu suất làm việc', weight: 30, description: 'Đánh giá kết quả công việc và hiệu quả làm việc' },
         { id: 3, name: 'Tinh thần làm việc', weight: 20, description: 'Đánh giá thái độ, tinh thần làm việc và đóng góp cho tập thể' },
         { id: 4, name: 'Kỹ năng giao tiếp', weight: 20, description: 'Đánh giá khả năng giao tiếp và làm việc nhóm' },
       ]);
     }
-  }, [isOpen]);
+  }, [isOpen, plan]);
 
   // Theo dõi khi thay đổi isCompanyWide và cập nhật UI
   useEffect(() => {
@@ -85,19 +89,19 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({
       startDate,
       endDate,
       criteria,
-      status: 'ACTIVE',
+      status: plan.status || 'ACTIVE',
       isCompanyWide,
       departmentIds: !isCompanyWide ? selectedDepartmentIds : undefined
     };
 
     // Log thông tin kế hoạch
     if (selectedDepartmentIds.length > 0 && !isCompanyWide) {
-      console.log(`Đang tạo kế hoạch cho ${selectedDepartmentIds.length} phòng ban: ${selectedDepartmentIds.join(', ')}`);
+      console.log(`Đang cập nhật kế hoạch cho ${selectedDepartmentIds.length} phòng ban: ${selectedDepartmentIds.join(', ')}`);
     } else if (isCompanyWide) {
-      console.log('Đang tạo kế hoạch cho toàn công ty');
+      console.log('Đang cập nhật kế hoạch cho toàn công ty');
     }
     
-    onSubmit(planData);
+    onSubmit(plan.id, planData);
   };
 
   // Xử lý khi chọn/bỏ chọn phòng ban
@@ -169,7 +173,7 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Tạo kế hoạch đánh giá hiệu suất">
+    <Modal isOpen={isOpen} onClose={onClose} title="Chỉnh sửa kế hoạch đánh giá hiệu suất">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">Tiêu đề</label>
@@ -209,63 +213,37 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({
             </div>
 
             {!isCompanyWide && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Chọn phòng ban <span className="text-red-500">*</span>
-                </label>
-                
-                {departments.length > 0 && (
-                  <div className="mb-2">
-                    <div className="flex items-center mb-1">
-                      <input
-                        id="select-all-departments"
-                        type="checkbox"
-                        checked={selectedDepartmentIds.length === departments.length}
-                        onChange={(e) => handleSelectAllDepartments(e.target.checked)}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor="select-all-departments" className="ml-2 block text-sm font-medium text-gray-700">
-                        Chọn tất cả phòng ban
-                      </label>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="grid grid-cols-2 gap-2 border p-3 rounded max-h-48 overflow-y-auto">
+              <div className="border rounded-md p-4 mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Chọn phòng ban</label>
+                <div className="flex items-center mb-2">
+                  <input
+                    id="select-all"
+                    type="checkbox"
+                    checked={selectedDepartmentIds.length === departments.length}
+                    onChange={(e) => handleSelectAllDepartments(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="select-all" className="ml-2 block text-sm text-gray-900">
+                    Chọn tất cả
+                  </label>
+                </div>
+                <div className="max-h-40 overflow-y-auto">
                   {departments.map((dept) => (
-                    <div key={dept.id} className="flex items-center">
+                    <div key={dept.id} className="flex items-center mb-2">
                       <input
                         id={`dept-${dept.id}`}
                         type="checkbox"
                         checked={selectedDepartmentIds.includes(dept.id)}
                         onChange={(e) => handleDepartmentChange(dept.id, e.target.checked)}
-                        disabled={isCompanyWide}
                         className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
-                      <label htmlFor={`dept-${dept.id}`} className="ml-2 block text-sm text-gray-900 truncate">
+                      <label htmlFor={`dept-${dept.id}`} className="ml-2 block text-sm text-gray-900">
                         {dept.name}
                       </label>
                     </div>
                   ))}
-                  
-                  {departments.length === 0 && (
-                    <p className="text-sm text-orange-500 col-span-2 py-2 text-center">
-                      Không có phòng ban nào. Vui lòng tạo phòng ban trước hoặc chọn "Áp dụng cho toàn công ty".
-                    </p>
-                  )}
                 </div>
-                
-                {departmentError && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {departmentError}
-                  </p>
-                )}
-                
-                {selectedDepartmentIds.length > 0 && (
-                  <p className="mt-1 text-sm text-green-600">
-                    Đã chọn {selectedDepartmentIds.length} phòng ban
-                  </p>
-                )}
+                {departmentError && <p className="text-red-500 text-sm mt-1">{departmentError}</p>}
               </div>
             )}
           </>
@@ -282,7 +260,6 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({
               required
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700">Ngày kết thúc</label>
             <input
@@ -333,44 +310,41 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-6 gap-3">
-                <div className="col-span-5">
-                  <label className="block text-xs font-medium text-gray-700">Mô tả</label>
-                  <input
-                    type="text"
-                    value={criterion.description}
-                    onChange={(e) => handleCriteriaChange(index, 'description', e.target.value)}
-                    className="mt-1 block w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div className="flex items-end justify-end">
-                  <button
-                    type="button"
-                    onClick={() => removeCriteria(index)}
-                    className="text-red-600 hover:text-red-800"
-                    title="Xóa tiêu chí"
-                  >
-                    <i className="fas fa-trash"></i>
-                  </button>
-                </div>
+              <div className="mb-2">
+                <label className="block text-xs font-medium text-gray-700">Mô tả tiêu chí</label>
+                <input
+                  type="text"
+                  value={criterion.description}
+                  onChange={(e) => handleCriteriaChange(index, 'description', e.target.value)}
+                  className="mt-1 block w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
               </div>
+              {criteria.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeCriteria(index)}
+                  className="text-xs text-red-600 hover:text-red-800"
+                >
+                  Xóa tiêu chí
+                </button>
+              )}
             </div>
           ))}
         </div>
-
-        <div className="flex justify-end space-x-3 mt-6">
+        
+        <div className="flex justify-end space-x-2 mt-4">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            Hủy
+            Hủy bỏ
           </button>
           <button
             type="submit"
-            className="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            className="inline-flex justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            Tạo
+            Lưu thay đổi
           </button>
         </div>
       </form>
@@ -378,4 +352,4 @@ const CreatePlanModal: React.FC<CreatePlanModalProps> = ({
   );
 };
 
-export default CreatePlanModal;
+export default EditPlanModal; 
