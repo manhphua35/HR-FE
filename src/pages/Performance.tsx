@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import CreatePlanModal from '../components/modals/CreatePlanModal';
@@ -131,6 +131,112 @@ const Performance: React.FC = () => {
   const isAdmin = isSystemAdmin || isHRStaff;
   const isRegularEmployee = !isManager && !isAdmin;   
   
+  // Sử dụng useRef để lưu trữ các state cần thiết cho updateAllPlans
+  // Ref không gây re-render khi cập nhật giá trị
+  const stateRef = useRef({
+    monthFilter,
+    yearFilter,
+    companyWidePlans,
+    allDepartmentPlans,
+    plans,
+    isAdmin,
+    isManager
+  });
+  
+  // Cập nhật giá trị ref khi các state thay đổi (không gây re-render)
+  useEffect(() => {
+    stateRef.current = {
+      monthFilter,
+      yearFilter,
+      companyWidePlans,
+      allDepartmentPlans,
+      plans,
+      isAdmin,
+      isManager
+    };
+  }, [monthFilter, yearFilter, companyWidePlans, allDepartmentPlans, plans, isAdmin, isManager]);
+  
+  // Hàm updateAllPlans sử dụng giá trị từ ref, không phụ thuộc vào closure
+  const updateAllPlans = () => {
+    console.log('Đang cập nhật danh sách kế hoạch...');
+    const {
+      monthFilter,
+      yearFilter,
+      companyWidePlans,
+      allDepartmentPlans,
+      plans,
+      isAdmin,
+      isManager
+    } = stateRef.current;
+    
+    let combinedPlans: PerformancePlan[] = [];
+    
+    // Thêm kế hoạch toàn công ty cho tất cả người dùng
+    combinedPlans = [...combinedPlans, ...companyWidePlans];
+    
+    // Thêm kế hoạch phòng ban dựa trên quyền người dùng
+    if (isAdmin) {
+      // Admin xem được tất cả kế hoạch phòng ban
+      combinedPlans = [...combinedPlans, ...allDepartmentPlans];
+    } else if (isManager) {
+      // Department head chỉ xem được kế hoạch phòng mình
+      combinedPlans = [...combinedPlans, ...plans];
+    }
+    // Nhân viên thường không thêm kế hoạch phòng ban vào danh sách
+    
+    // Lọc theo năm
+    if (yearFilter) {
+      combinedPlans = combinedPlans.filter(plan => {
+        const planYear = new Date(plan.startDate).getFullYear();
+        return planYear === yearFilter;
+      });
+    }
+    
+    // Lọc theo tháng nếu có
+    if (monthFilter > 0) {
+      combinedPlans = combinedPlans.filter(plan => {
+        // Tạo các đối tượng Date từ chuỗi ngày
+        // Cần đảm bảo là không có lỗi do múi giờ
+        const startDateStr = plan.startDate.split('T')[0]; // Lấy phần ngày "YYYY-MM-DD"
+        const endDateStr = plan.endDate.split('T')[0]; // Lấy phần ngày "YYYY-MM-DD"
+        
+        // Tạo đối tượng Date mới với giờ là 12 trưa để tránh vấn đề về múi giờ
+        const planStartDate = new Date(`${startDateStr}T12:00:00`);
+        const planEndDate = new Date(`${endDateStr}T12:00:00`);
+        
+        // Tạo mốc thời gian đầu tháng và cuối tháng được chọn trong năm hiện tại
+        const currentMonthFilter = monthFilter; // Lấy giá trị hiện tại của biến
+        const filterStartDate = new Date(yearFilter, currentMonthFilter - 1, 1, 12, 0, 0); // Tháng 0-11, giờ là 12 trưa
+        // Tính ngày cuối cùng của tháng bằng cách lấy ngày 0 của tháng kế tiếp
+        const filterEndDate = new Date(yearFilter, currentMonthFilter, 0, 12, 0, 0); 
+        
+        // Kiểm tra xem kế hoạch có diễn ra trong tháng đã chọn không
+        const isStartInFilter = planStartDate >= filterStartDate && planStartDate <= filterEndDate;
+        const isEndInFilter = planEndDate >= filterStartDate && planEndDate <= filterEndDate;
+        const isFilterInPlan = planStartDate <= filterStartDate && planEndDate >= filterEndDate;
+        
+        return isStartInFilter || isEndInFilter || isFilterInPlan;
+      });
+    }
+    
+    // Lọc bỏ các kế hoạch trùng lặp (có cùng ID)
+    const planIds = new Set<number>();
+    combinedPlans = combinedPlans.filter(plan => {
+      if (planIds.has(plan.id)) {
+        return false; // Đã có kế hoạch này trong danh sách, bỏ qua
+      }
+      planIds.add(plan.id); // Thêm ID vào Set để theo dõi
+      return true;
+    });
+    
+    // Sắp xếp theo thời gian (mới nhất trước)
+    combinedPlans.sort((a, b) => {
+      return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+    });
+    
+    setAllPlans(combinedPlans);
+  };
+
   // Lưu selectedPlan vào localStorage khi thay đổi
   useEffect(() => {    
     if (selectedPlan) {      
@@ -140,24 +246,21 @@ const Performance: React.FC = () => {
     }  
   }, [selectedPlan]);
 
+  // Chỉ cập nhật lại kết quả lọc khi monthFilter hoặc yearFilter thay đổi
+  // KHÔNG gọi API mới, chỉ lọc lại dữ liệu đã có
   useEffect(() => {
-    // Được gọi khi monthFilter hoặc yearFilter thay đổi
-    if (isAdmin || isManager || isRegularEmployee) {
-      console.log('Effect: monthFilter hoặc yearFilter đã thay đổi:', {monthFilter, yearFilter});
-      
-      // Đảm bảo giá trị monthFilter được sử dụng đúng cách
-      const currentMonthFilter = monthFilter;
-      const currentYearFilter = yearFilter;
-      
-      console.log('Giá trị thực tế sẽ được sử dụng:', {currentMonthFilter, currentYearFilter});
-      
-      // Gọi updateAllPlans với giá trị hiện tại
+    if (!loading) {
       updateAllPlans();
     }
-  }, [monthFilter, yearFilter, isAdmin, isManager, isRegularEmployee]);
+  }, [monthFilter, yearFilter, loading]);
+
+  // Thêm biến để theo dõi đã tải dữ liệu hay chưa
+  const hasInitiallyFetched = useRef(false);
 
   useEffect(() => {
     const loadInitialData = async () => {
+      if (hasInitiallyFetched.current) return; // Nếu đã tải rồi thì không tải lại
+      
       try {
         setLoading(true);
         // Fetch departments
@@ -179,16 +282,22 @@ const Performance: React.FC = () => {
           await fetchEmployeeReviews();
         }
         
-        // Hợp nhất tất cả các loại kế hoạch dựa trên quyền
-        updateAllPlans();
+        // Đánh dấu đã tải dữ liệu
+        hasInitiallyFetched.current = true;
         
-        setLoading(false);
+        // Hợp nhất tất cả các loại kế hoạch dựa trên quyền và áp dụng bộ lọc tháng hiện tại
+        // Sử dụng setTimeout để đảm bảo state đã được cập nhật
+        setTimeout(() => {
+          updateAllPlans();
+          setLoading(false);
+        }, 0);
       } catch (err) {
         setError('Lấy dữ liệu hiệu suất thất bại');
         setLoading(false);
       }
     };
 
+    // Chỉ gọi một lần khi component mount hoặc khi isAdmin/isManager thay đổi
     loadInitialData();
   }, [isAdmin, isManager]);
 
@@ -196,7 +305,7 @@ const Performance: React.FC = () => {
     try {
       const data = await PerformanceService.getAllDepartmentPlans();
       setAllDepartmentPlans(data);
-      updateAllPlans();
+      // Không gọi updateAllPlans() ở đây vì sẽ được gọi sau khi tất cả dữ liệu đã được tải
     } catch (err) {
       setError('Lấy kế hoạch hiệu suất thất bại');
     }
@@ -206,7 +315,7 @@ const Performance: React.FC = () => {
     try {
       const data = await PerformanceService.getDepartmentPlans();
       setPlans(data);
-      updateAllPlans();
+      // Không gọi updateAllPlans() ở đây vì sẽ được gọi sau khi tất cả dữ liệu đã được tải
     } catch (err) {
       setError('Lấy kế hoạch hiệu suất thất bại');
     }
@@ -255,7 +364,7 @@ const Performance: React.FC = () => {
     try {
       const data = await PerformanceService.getCompanyWidePlans();
       setCompanyWidePlans(data);
-      updateAllPlans();
+      // Không gọi updateAllPlans() ở đây vì sẽ được gọi sau khi tất cả dữ liệu đã được tải
     } catch (err) {
       console.error('Lỗi khi lấy kế hoạch hiệu suất toàn công ty:', err);
     }
@@ -266,11 +375,6 @@ const Performance: React.FC = () => {
     isCompanyWide?: boolean 
   }) => {
     try {
-      console.log('Selected Department ID:', selectedDepartmentId);
-      console.log('Is Admin:', isAdmin);
-      console.log('Current User Department:', currentUser?.departmentId);
-      console.log('Is Company Wide:', data.isCompanyWide);
-
       let departmentId: number | null = null;
       
       // Nếu là kế hoạch toàn công ty, không cần departmentId
@@ -302,23 +406,30 @@ const Performance: React.FC = () => {
         isCompanyWide: data.isCompanyWide || false
       };
       
-      console.log('Dữ liệu gửi đi khi tạo kế hoạch:', requestData);
+      // Đánh dấu đang tải để tránh useEffect về filter gọi updateAllPlans quá sớm
+      setLoading(true);
       
       await PerformanceService.createPlan(requestData);
       
       if (data.isCompanyWide) {
-        fetchCompanyWidePlans();
+        await fetchCompanyWidePlans();
       }
       
       if (isAdmin) {
-        fetchAllDepartmentPlans();
-        fetchOverallPerformance();
+        await fetchAllDepartmentPlans();
+        await fetchOverallPerformance();
       } else {
-        fetchDepartmentPlans();
+        await fetchDepartmentPlans();
       }
       
       setIsCreatePlanModalOpen(false);
       setSelectedDepartmentId(null);
+      
+      // Khi mọi thứ đã cập nhật xong, gọi updateAllPlans và bỏ loading
+      setTimeout(() => {
+        updateAllPlans();
+        setLoading(false);
+      }, 0);
     } catch (err: any) {
       console.error('Lỗi tạo kế hoạch:', err);
       if (err.response && err.response.data && err.response.data.message) {
@@ -326,6 +437,7 @@ const Performance: React.FC = () => {
       } else {
         setError('Tạo kế hoạch hiệu suất thất bại');
       }
+      setLoading(false);
     }
   };
 
@@ -454,6 +566,10 @@ const Performance: React.FC = () => {
     
     try {
       setIsDeleting(true);
+      
+      // Đánh dấu đang tải để tránh useEffect về filter gọi updateAllPlans quá sớm
+      setLoading(true);
+      
       await PerformanceService.deletePlan(planToDelete);
       
       // Cập nhật lại danh sách kế hoạch
@@ -465,102 +581,21 @@ const Performance: React.FC = () => {
         await fetchCompanyWidePlans();
       }
       
+      // Khi mọi thứ đã cập nhật xong, gọi updateAllPlans và bỏ loading
+      setTimeout(() => {
+        updateAllPlans();
+        setLoading(false);
+      }, 0);
+      
       setIsDeleting(false);
+      setIsDeleteModalOpen(false);
       setPlanToDelete(null);
       setPlanTitleToDelete('');
     } catch (err) {
       setError('Xóa kế hoạch thất bại');
       setIsDeleting(false);
+      setLoading(false);
     }
-  };
-
-  // Hàm hợp nhất tất cả các kế hoạch
-  const updateAllPlans = () => {
-    console.log('Đang thực hiện updateAllPlans với monthFilter =', monthFilter, 'và yearFilter =', yearFilter);
-    
-    let combinedPlans: PerformancePlan[] = [];
-    
-    // Thêm kế hoạch toàn công ty cho tất cả người dùng
-    combinedPlans = [...combinedPlans, ...companyWidePlans];
-    
-    // Thêm kế hoạch phòng ban dựa trên quyền người dùng
-    if (isAdmin) {
-      // Admin xem được tất cả kế hoạch phòng ban
-      combinedPlans = [...combinedPlans, ...allDepartmentPlans];
-    } else if (isManager) {
-      // Department head chỉ xem được kế hoạch phòng mình
-      combinedPlans = [...combinedPlans, ...plans];
-    }
-    // Nhân viên thường không thêm kế hoạch phòng ban vào danh sách
-    
-    // Lọc theo năm
-    if (yearFilter) {
-      combinedPlans = combinedPlans.filter(plan => {
-        const planYear = new Date(plan.startDate).getFullYear();
-        return planYear === yearFilter;
-      });
-    }
-    
-    // Lọc theo tháng nếu có
-    if (monthFilter > 0) {
-      console.log('Đang lọc theo tháng:', monthFilter);
-      
-      combinedPlans = combinedPlans.filter(plan => {
-        // Tạo các đối tượng Date từ chuỗi ngày
-        // Cần đảm bảo là không có lỗi do múi giờ
-        const startDateStr = plan.startDate.split('T')[0]; // Lấy phần ngày "YYYY-MM-DD"
-        const endDateStr = plan.endDate.split('T')[0]; // Lấy phần ngày "YYYY-MM-DD"
-        
-        // Tạo đối tượng Date mới với giờ là 12 trưa để tránh vấn đề về múi giờ
-        const planStartDate = new Date(`${startDateStr}T12:00:00`);
-        const planEndDate = new Date(`${endDateStr}T12:00:00`);
-        
-        // Tạo mốc thời gian đầu tháng và cuối tháng được chọn trong năm hiện tại
-        const currentMonthFilter = monthFilter; // Lấy giá trị hiện tại của biến
-        const filterStartDate = new Date(yearFilter, currentMonthFilter - 1, 1, 12, 0, 0); // Tháng 0-11, giờ là 12 trưa
-        // Tính ngày cuối cùng của tháng bằng cách lấy ngày 0 của tháng kế tiếp
-        const filterEndDate = new Date(yearFilter, currentMonthFilter, 0, 12, 0, 0); 
-        
-        // Debug
-        console.log('Filter for Plan ID:', plan.id);
-        console.log('Plan Start Date:', planStartDate.toISOString(), '(Original:', plan.startDate, ')');
-        console.log('Plan End Date:', planEndDate.toISOString(), '(Original:', plan.endDate, ')');
-        console.log('Filter Month:', currentMonthFilter);
-        console.log('Filter Start Date:', filterStartDate.toISOString(), 'Month:', filterStartDate.getMonth() + 1);
-        console.log('Filter End Date:', filterEndDate.toISOString(), 'Month:', filterEndDate.getMonth() + 1);
-        
-        // Kiểm tra xem kế hoạch có diễn ra trong tháng đã chọn không
-        const isStartInFilter = planStartDate >= filterStartDate && planStartDate <= filterEndDate;
-        const isEndInFilter = planEndDate >= filterStartDate && planEndDate <= filterEndDate;
-        const isFilterInPlan = planStartDate <= filterStartDate && planEndDate >= filterEndDate;
-        
-        console.log('Start in Filter:', isStartInFilter);
-        console.log('End in Filter:', isEndInFilter);
-        console.log('Filter within Plan:', isFilterInPlan);
-        console.log('Plan matches Filter:', isStartInFilter || isEndInFilter || isFilterInPlan);
-        
-        return isStartInFilter || isEndInFilter || isFilterInPlan;
-      });
-    }
-    
-    // Lọc bỏ các kế hoạch trùng lặp (có cùng ID)
-    const planIds = new Set<number>();
-    combinedPlans = combinedPlans.filter(plan => {
-      if (planIds.has(plan.id)) {
-        return false; // Đã có kế hoạch này trong danh sách, bỏ qua
-      }
-      planIds.add(plan.id); // Thêm ID vào Set để theo dõi
-      return true;
-    });
-    
-    // Sắp xếp theo thời gian (mới nhất trước)
-    combinedPlans.sort((a, b) => {
-      return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
-    });
-    
-    console.log('Danh sách kế hoạch sau khi cập nhật:', combinedPlans.map(plan => `${plan.isCompanyWide ? 'Toàn công ty' : 'Phòng ban'}-${plan.id}: ${plan.title}`));
-    
-    setAllPlans(combinedPlans);
   };
 
   const renderAllPlans = () => {
@@ -590,7 +625,6 @@ const Performance: React.FC = () => {
               value={monthFilter}
               onChange={(e) => {
                 const newMonth = parseInt(e.target.value);
-                console.log('Đã chọn tháng mới:', newMonth);
                 setMonthFilter(newMonth);
                 // updateAllPlans được gọi bởi useEffect khi monthFilter thay đổi
               }}
@@ -776,6 +810,9 @@ const Performance: React.FC = () => {
       // Gọi API service để cập nhật kế hoạch (giả định đã tồn tại)
       await PerformanceService.updatePlan(planId, data);
       
+      // Đánh dấu đang tải để tránh useEffect về filter gọi updateAllPlans quá sớm
+      setLoading(true);
+      
       // Cập nhật lại dữ liệu
       if (isAdmin) {
         await fetchAllDepartmentPlans();
@@ -784,8 +821,6 @@ const Performance: React.FC = () => {
         await fetchDepartmentPlans();
         await fetchCompanyWidePlans();
       }
-      
-      updateAllPlans();
       
       // Đóng modal
       setIsEditPlanModalOpen(false);
@@ -802,6 +837,12 @@ const Performance: React.FC = () => {
           localStorage.setItem('selectedPerformancePlan', JSON.stringify(updatedPlan));
         }
       }
+      
+      // Khi mọi thứ đã cập nhật xong, gọi updateAllPlans và bỏ loading
+      setTimeout(() => {
+        updateAllPlans();
+        setLoading(false);
+      }, 0);
     } catch (err: any) {
       console.error('Lỗi cập nhật kế hoạch:', err);
       if (err.response && err.response.data && err.response.data.message) {
