@@ -116,7 +116,19 @@ export const AttendanceService = {
     const url = `/attendances${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     try {
       const response = await axiosInstance.get(url);
-      const records = response.data as AttendanceRecord[]; // Type assertion here
+      
+      // Kiểm tra định dạng phản hồi
+      let records: AttendanceRecord[] = [];
+      
+      if (response.data && response.data.data) {
+        // Trả về là ApiResponse<AttendanceRecord[]>
+        records = response.data.data;
+      } else if (Array.isArray(response.data)) {
+        // Trả về trực tiếp là AttendanceRecord[]
+        records = response.data;
+      } else {
+        throw new Error('Định dạng dữ liệu không hợp lệ từ API');
+      }
       
       return {
         records: records,
@@ -140,7 +152,15 @@ export const AttendanceService = {
 
     try {
       const response = await axiosInstance.get(`/attendances/history/day?${queryParams.toString()}`);
-      return response.data as AttendanceRecord[];
+      
+      // Kiểm tra định dạng phản hồi
+      if (response.data && response.data.data) {
+        return response.data.data;
+      } else if (Array.isArray(response.data)) {
+        return response.data;
+      } else {
+        throw new Error('Định dạng dữ liệu không hợp lệ từ API');
+      }
     } catch (error) {
       console.error('Error fetching attendance history by day:', error);
       throw new Error('Không thể lấy lịch sử chấm công theo ngày');
@@ -157,7 +177,15 @@ export const AttendanceService = {
 
     try {
       const response = await axiosInstance.get(`/attendances/history/month?${queryParams.toString()}`);
-      return response.data as AttendanceRecord[];
+      
+      // Kiểm tra định dạng phản hồi
+      if (response.data && response.data.data) {
+        return response.data.data;
+      } else if (Array.isArray(response.data)) {
+        return response.data;
+      } else {
+        throw new Error('Định dạng dữ liệu không hợp lệ từ API');
+      }
     } catch (error) {
       console.error('Error fetching attendance history by month:', error);
       throw new Error('Không thể lấy lịch sử chấm công theo tháng');
@@ -206,7 +234,15 @@ export const AttendanceService = {
 
     try {
       const response = await axiosInstance.get(`/attendances/by-date?${queryParams.toString()}`);
-      return response.data as AttendanceRecord[];
+      
+      // Kiểm tra định dạng phản hồi
+      if (response.data && response.data.data) {
+        return response.data.data;
+      } else if (Array.isArray(response.data)) {
+        return response.data;
+      } else {
+        throw new Error('Định dạng dữ liệu không hợp lệ từ API');
+      }
     } catch (error) {
       console.error('Error fetching attendance by specific date:', error);
       throw new Error('Không thể lấy dữ liệu chấm công cho ngày đã chọn');

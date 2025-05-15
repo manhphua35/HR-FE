@@ -68,7 +68,13 @@ interface IPayrollSummary {
   basicSalary: string;
   totalAllowance: string;
   totalDeduction: string;
+  totalBenefit: string;
+  bonus: string;
+  tax: string;
   netSalary: string;
+  leaveDeductionAmount: string;
+  latePenaltyAmount: string;
+  isFinalized: boolean;
 }
 
 interface ITrainingCourse {

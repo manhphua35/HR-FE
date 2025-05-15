@@ -29,7 +29,13 @@ interface IPayrollSummary {
     basicSalary: string; // API returns string, handle conversion if needed
     totalAllowance: string;
     totalDeduction: string;
+    totalBenefit: string;
+    bonus: string;
+    tax: string;
     netSalary: string;
+    leaveDeductionAmount: string;
+    latePenaltyAmount: string;
+    isFinalized: boolean;
 }
 
 interface IPerformanceSummary {
@@ -135,6 +141,8 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ userId }) => {
                 <>
                   <h3 className="text-2xl font-bold">{Number(payroll.netSalary).toLocaleString('vi-VN')}</h3>
                   <p className="text-sm text-gray-500">Lương thực nhận</p>
+                  <p className="text-xs text-red-500 mt-1">Khấu trừ nghỉ phép: {Number(payroll.leaveDeductionAmount).toLocaleString('vi-VN')}</p>
+                  <p className="text-xs text-red-500">Phạt đi muộn: {Number(payroll.latePenaltyAmount).toLocaleString('vi-VN')}</p>
                 </>
               ) : (
                 <p className="text-gray-500">Chưa có dữ liệu</p>

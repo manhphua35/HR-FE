@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AttendanceService, AttendanceStatus, AttendanceRecord } from '../services/AttendanceService';
+import { AttendanceService, AttendanceStatus, AttendanceRecord, GetAttendancesParams } from '../services/AttendanceService';
 import CreateAttendanceModal from '../components/modals/CreateAttendanceModal';
 import EditAttendanceModal from '../components/modals/EditAttendanceModal';
 import ConfirmDeleteAttendanceModal from '../components/modals/ConfirmDeleteAttendanceModal';
@@ -52,6 +52,8 @@ const dayOptions = [
 const Attendance: React.FC = () => {
   const { currentUser } = useAuth();
   const isEmployee = currentUser?.role?.roleType === 'EMPLOYEE';
+  const isDepartmentHead = currentUser?.role?.roleType === 'DEPARTMENT_HEAD';
+  const isHrOrAdmin = ['SYSTEM_ADMIN', 'HR_STAFF'].includes(currentUser?.role?.roleType || '');
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<AttendanceStatus | "">("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("");
@@ -103,11 +105,26 @@ const Attendance: React.FC = () => {
       setError("");
       
       let data: any;
+      let params: GetAttendancesParams = {};
+      
+      // Áp dụng phân quyền cho việc xem dữ liệu
+      if (isEmployee && currentUser) {
+        // Nhân viên chỉ xem dữ liệu của bản thân
+        params.userId = currentUser.id;
+      } else if (isDepartmentHead && currentUser) {
+        // Trưởng phòng xem dữ liệu của phòng mình
+        params.departmentId = currentUser.departmentId || undefined;
+      }
+      // Admin và HR có thể xem toàn bộ dữ liệu
       
       switch (viewMode) {
         case ViewMode.SPECIFIC_DATE:
           // Lấy dữ liệu chấm công cho ngày cụ thể
-          const specificDateRecords = await AttendanceService.getAttendanceBySpecificDate(selectedDate);
+          const specificDateRecords = await AttendanceService.getAttendanceBySpecificDate(
+            selectedDate,
+            isEmployee ? currentUser?.id : undefined,
+            isDepartmentHead ? currentUser?.departmentId || undefined : undefined
+          );
           data = {
             records: specificDateRecords,
             total: specificDateRecords.length,
@@ -119,7 +136,12 @@ const Attendance: React.FC = () => {
           
         case ViewMode.HISTORY_MONTH:
           // Lấy lịch sử chấm công theo tháng
-          const historyMonthRecords = await AttendanceService.getAttendanceHistoryByMonth(selectedYear, selectedMonth);
+          const historyMonthRecords = await AttendanceService.getAttendanceHistoryByMonth(
+            selectedYear, 
+            selectedMonth,
+            isEmployee ? currentUser?.id : undefined,
+            isDepartmentHead ? currentUser?.departmentId || undefined : undefined
+          );
           data = {
             records: historyMonthRecords,
             total: historyMonthRecords.length,
@@ -130,8 +152,8 @@ const Attendance: React.FC = () => {
           break;
           
         default:
-          // Chế độ mặc định - lấy tất cả bản ghi
-          data = await AttendanceService.getAttendances();
+          // Chế độ mặc định - lấy tất cả bản ghi theo quyền
+          data = await AttendanceService.getAttendances(params);
           break;
       }
       
@@ -328,7 +350,7 @@ const Attendance: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">Chấm công</h1>
-        {!isEmployee && (
+        {isHrOrAdmin && (
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center"
@@ -363,16 +385,19 @@ const Attendance: React.FC = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <select
-                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5"
-                value={departmentFilter}
-                onChange={(e) => setDepartmentFilter(e.target.value)}
-              >
-                <option value="">Tất cả phòng ban</option>
-                {departments.map((department, index) => (
-                  <option key={index} value={department}>{department}</option>
-                ))}
-              </select>
+              {/* Chỉ hiển thị bộ lọc phòng ban cho HR và Admin */}
+              {isHrOrAdmin && (
+                <select
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5"
+                  value={departmentFilter}
+                  onChange={(e) => setDepartmentFilter(e.target.value)}
+                >
+                  <option value="">Tất cả phòng ban</option>
+                  {departments.map((department, index) => (
+                    <option key={index} value={department}>{department}</option>
+                  ))}
+                </select>
+              )}
 
               <select
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5"
@@ -459,26 +484,30 @@ const Attendance: React.FC = () => {
                         <div className="text-sm text-gray-900">{record.workHours ?? '-'}</div>
                       </td>
                       <td className="px-6 py-5 text-right">
-                        <button
-                          onClick={() => {
-                            setSelectedAttendance(record);
-                            setIsEditModalOpen(true);
-                          }}
-                          className="text-blue-600 hover:text-blue-900 mr-3"
-                          title="Sửa"
-                        >
-                          <i className="fas fa-edit"></i>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedAttendance(record);
-                            setIsDeleteModalOpen(true);
-                          }}
-                          className="text-red-600 hover:text-red-900"
-                          title="Xóa"
-                        >
-                          <i className="fas fa-trash"></i>
-                        </button>
+                        {(isHrOrAdmin || (isDepartmentHead && record.user?.departmentId === currentUser?.departmentId)) && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setSelectedAttendance(record);
+                                setIsEditModalOpen(true);
+                              }}
+                              className="text-blue-600 hover:text-blue-900 mr-3"
+                              title="Sửa"
+                            >
+                              <i className="fas fa-edit"></i>
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedAttendance(record);
+                                setIsDeleteModalOpen(true);
+                              }}
+                              className="text-red-600 hover:text-red-900"
+                              title="Xóa"
+                            >
+                              <i className="fas fa-trash"></i>
+                            </button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))
