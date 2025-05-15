@@ -110,28 +110,6 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
             {/* Added dark mode text color for icons */}
             <div className="flex items-center space-x-4 text-gray-600 dark:text-gray-400">
-              {/* Notifications */}
-              <div className="relative">
-                <button className="hover:text-gray-900 dark:hover:text-gray-200 focus:outline-none">
-                  <i className="fas fa-bell text-xl"></i>
-                  {/* Notification badge colors can remain */}
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    3
-                  </span>
-                </button>
-              </div>
-
-              {/* Messages */}
-              <div className="relative">
-                <button className="hover:text-gray-900 dark:hover:text-gray-200 focus:outline-none">
-                  <i className="fas fa-envelope text-xl"></i>
-                  {/* Message badge colors can remain */}
-                  <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    5
-                  </span>
-                </button>
-              </div>
-
               {/* Profile */}
               <div className="relative">
                 <button className="flex items-center hover:text-gray-900 dark:hover:text-gray-200 focus:outline-none">

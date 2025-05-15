@@ -115,7 +115,6 @@ const Attendance: React.FC = () => {
         // Trưởng phòng xem dữ liệu của phòng mình
         params.departmentId = currentUser.departmentId || undefined;
       }
-      // Admin và HR có thể xem toàn bộ dữ liệu
       
       switch (viewMode) {
         case ViewMode.SPECIFIC_DATE:
