@@ -38,6 +38,7 @@ const Training: React.FC<TrainingProps> = () => {
   const isHR = currentUser?.role?.roleType === 'HR_STAFF';
   const isDepartmentHead = currentUser?.role?.roleType === 'DEPARTMENT_HEAD';
   const canManageCourses = isAdmin || isHR || isDepartmentHead;
+  const canViewAllCourses = isAdmin || isHR;
 
   useEffect(() => {
     fetchCourses();
@@ -50,13 +51,25 @@ const Training: React.FC<TrainingProps> = () => {
   const fetchCourses = async () => {
     try {
       setLoading(true);
-      let fetchedCourses = await TrainingService.getTrainingCourses();
+      let fetchedCourses: TrainingCourse[] = [];
       
-      // Nếu là trưởng phòng, chỉ hiển thị khóa học của phòng họ
-      if (isDepartmentHead && currentUser?.departmentId) {
-        fetchedCourses = fetchedCourses.filter(
-          course => !course.departmentId || course.departmentId === currentUser.departmentId
-        );
+      // Phân quyền xem khóa học:
+      // Admin và HR xem tất cả khóa học
+      if (isAdmin || isHR) {
+        fetchedCourses = await TrainingService.getTrainingCourses();
+      }
+      // Trưởng phòng và nhân viên chỉ xem khóa học của phòng ban của họ
+      else if (currentUser?.departmentId) {
+        // Lấy khóa học theo phòng ban
+        try {
+          fetchedCourses = await TrainingService.getDepartmentTrainingCourses(currentUser.departmentId);
+        } catch (err) {
+          // Fallback: nếu API không hỗ trợ, filter từ tất cả khóa học
+          const allCourses = await TrainingService.getTrainingCourses();
+          fetchedCourses = allCourses.filter(
+            course => !course.departmentId || course.departmentId === currentUser.departmentId
+          );
+        }
       }
       
       setCourses(fetchedCourses || []); // Đảm bảo luôn set mảng rỗng nếu không có dữ liệu
@@ -297,12 +310,6 @@ const Training: React.FC<TrainingProps> = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Quản lý đào tạo</h1>
         <div className="flex space-x-3">
-          <button
-            onClick={() => setShowExportModal(true)}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
-            Xuất báo cáo
-          </button>
           {canManageCourses && (
             <button
               onClick={handleCreateCourse}
@@ -380,6 +387,8 @@ const Training: React.FC<TrainingProps> = () => {
             <div
               key={course.id}
               className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden"
+              onClick={() => handleCourseDetail(course.id)}
+              style={{ cursor: 'pointer' }}
             >
               <div className="p-5">
                 <div className="flex justify-between items-start mb-3">
@@ -428,7 +437,7 @@ const Training: React.FC<TrainingProps> = () => {
                     </div>
                   )}
                 </div>
-                <div className="mt-4 flex justify-between items-center">
+                <div className="mt-4 flex justify-between items-center" onClick={(e) => e.stopPropagation()}>
                   {canManageCourses && (
                     <div className="flex space-x-2">
                       <button

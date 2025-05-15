@@ -95,12 +95,24 @@ export const TrainingService = {
   },
 
   // Lấy danh sách khóa đào tạo
-  async getTrainingCourses(status?: TrainingStatus, departmentId?: number): Promise<TrainingCourse[]> {
-    const params = {
+  async getTrainingCourses(status?: TrainingStatus, departmentId?: number, userDepartmentId?: number): Promise<TrainingCourse[]> {
+    const params: any = {
       ...(status && { status }),
       ...(departmentId && { departmentId }),
     };
+    
+    // Truyền thêm departmentId của người dùng nếu cần lọc theo phòng ban
+    if (userDepartmentId) {
+      params.userDepartmentId = userDepartmentId;
+    }
+    
     const response = await axios.get(`${API_URL}/training/courses`, { params });
+    return response.data.data;
+  },
+
+  // Lấy khóa học theo phòng ban người dùng
+  async getDepartmentTrainingCourses(departmentId: number): Promise<TrainingCourse[]> {
+    const response = await axios.get(`${API_URL}/training/department-courses/${departmentId}`);
     return response.data.data;
   },
 

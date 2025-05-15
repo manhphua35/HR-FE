@@ -22,6 +22,7 @@ const TrainingDetail: React.FC = () => {
   const isHR = currentUser?.role?.roleType === 'HR_STAFF';
   const isDepartmentHead = currentUser?.role?.roleType === 'DEPARTMENT_HEAD';
   const canManage = isAdmin || isHR || (isDepartmentHead && course?.departmentId === currentUser?.departmentId);
+  const canViewAllCourses = isAdmin || isHR;
 
   useEffect(() => {
     fetchCourseDetails();
@@ -33,6 +34,18 @@ const TrainingDetail: React.FC = () => {
     try {
       setLoading(true);
       const courseDetails = await TrainingService.getTrainingCourseDetail(parseInt(id));
+      
+      // Kiểm tra quyền xem chi tiết khóa học
+      const userDepartmentId = currentUser?.departmentId;
+      const isCourseDepartmentMatch = courseDetails.departmentId === userDepartmentId || courseDetails.departmentId === null;
+      
+      // Nếu không phải admin/HR và khóa học không thuộc phòng ban của người dùng
+      if (!canViewAllCourses && !isCourseDepartmentMatch) {
+        setError('Bạn không có quyền xem khóa đào tạo này.');
+        setLoading(false);
+        return;
+      }
+      
       setCourse(courseDetails);
       
       // Giả định rằng getTrainingCourseDetail trả về cả participants và results
@@ -150,7 +163,23 @@ const TrainingDetail: React.FC = () => {
   }
 
   if (error) {
-    return <div className="p-6 text-red-500">{error}</div>;
+    return (
+      <div className="p-6">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Lỗi! </strong>
+          <span className="block sm:inline">{error}</span>
+        </div>
+        <button
+          onClick={() => navigate('/training')}
+          className="mt-4 flex items-center text-gray-600 hover:text-blue-600"
+        >
+          <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
+          </svg>
+          Quay lại danh sách
+        </button>
+      </div>
+    );
   }
 
   if (!course) {
@@ -253,7 +282,21 @@ const TrainingDetail: React.FC = () => {
                 </svg>
                 <div>
                   <p className="text-sm text-gray-500">Phòng ban</p>
-                  <p className="font-medium">ID: {course.departmentId}</p>
+                  <p className="font-medium">{course.department ? course.department.name : `ID: ${course.departmentId}`}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {!course.departmentId && (
+            <div className="bg-gray-50 p-4 rounded-md">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-gray-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+                <div>
+                  <p className="text-sm text-gray-500">Phạm vi</p>
+                  <p className="font-medium">Toàn công ty</p>
                 </div>
               </div>
             </div>
