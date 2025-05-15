@@ -119,7 +119,10 @@ const EditReviewModal: React.FC<EditReviewModalProps> = ({
   if (loading) {
     return (
       <Modal isOpen={isOpen} onClose={onClose} title="Chi tiết đánh giá">
-        <div className="text-center p-4">Đang tải...</div>
+        <div className="text-center p-4">
+          <i className="fas fa-spinner fa-spin mr-2"></i>
+          <span>Đang tải...</span>
+        </div>
       </Modal>
     );
   }
@@ -152,6 +155,18 @@ const EditReviewModal: React.FC<EditReviewModalProps> = ({
             </div>
           </div>
           <p className="text-sm text-gray-600">{review.planTitle}</p>
+          {review.status && (
+            <div className="mt-2">
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                review.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                review.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-800' :
+                'bg-yellow-100 text-yellow-800'
+              }`}>
+                {review.status === 'APPROVED' ? 'Đã duyệt' :
+                 review.status === 'SUBMITTED' ? 'Đã nộp' : 'Dự thảo'}
+              </span>
+            </div>
+          )}
         </div>
 
         <div>

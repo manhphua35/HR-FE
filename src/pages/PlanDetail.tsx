@@ -295,6 +295,7 @@ const PlanDetail: React.FC = () => {
     try {
       setLoadingAction(`deleting-${reviewToDelete}`);
       
+      // Xóa đánh giá
       await PerformanceService.deleteReview(reviewToDelete);
       
       // Làm mới danh sách đánh giá
@@ -303,6 +304,7 @@ const PlanDetail: React.FC = () => {
         setReviews(reviewsData);
       }
       
+      setIsDeleteModalOpen(false);
       setLoadingAction(null);
       setReviewToDelete(null);
       setEmployeeNameToDelete('');

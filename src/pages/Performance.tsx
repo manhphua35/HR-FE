@@ -120,10 +120,10 @@ const Performance: React.FC = () => {
   
   // Bộ lọc và sắp xếp
   const [yearFilter, setYearFilter] = useState<number>(new Date().getFullYear());
-  const [monthFilter, setMonthFilter] = useState<number>(0); // 0 = tất cả các tháng
+  const [monthFilter, setMonthFilter] = useState<number>(new Date().getMonth() + 1); // Tháng hiện tại (getMonth() trả về 0-11)
   const [allPlans, setAllPlans] = useState<PerformancePlan[]>([]);
   
-    // Không cần sử dụng showPlanDetails nữa vì ta chuyển sang trang riêng
+  // Không cần sử dụng showPlanDetails nữa vì ta chuyển sang trang riêng
 
   const isManager = currentUser?.role?.roleType === 'DEPARTMENT_HEAD';
   const isSystemAdmin = currentUser?.role?.roleType === 'SYSTEM_ADMIN';
@@ -141,28 +141,45 @@ const Performance: React.FC = () => {
   }, [selectedPlan]);
 
   useEffect(() => {
+    // Được gọi khi monthFilter hoặc yearFilter thay đổi
+    if (isAdmin || isManager || isRegularEmployee) {
+      console.log('Effect: monthFilter hoặc yearFilter đã thay đổi:', {monthFilter, yearFilter});
+      
+      // Đảm bảo giá trị monthFilter được sử dụng đúng cách
+      const currentMonthFilter = monthFilter;
+      const currentYearFilter = yearFilter;
+      
+      console.log('Giá trị thực tế sẽ được sử dụng:', {currentMonthFilter, currentYearFilter});
+      
+      // Gọi updateAllPlans với giá trị hiện tại
+      updateAllPlans();
+    }
+  }, [monthFilter, yearFilter, isAdmin, isManager, isRegularEmployee]);
+
+  useEffect(() => {
     const loadInitialData = async () => {
       try {
         setLoading(true);
         // Fetch departments
         await fetchDepartments();
         
-        // Fetch company-wide plans for all users
-        await fetchCompanyWidePlans();
-
+        // Phân quyền hiển thị kế hoạch dựa trên vai trò
         if (isAdmin) {
-          // Admins see all departments
-          await fetchOverallPerformance();
+          // Admin và HR xem tất cả kế hoạch của công ty
+          await fetchCompanyWidePlans();
           await fetchAllDepartmentPlans();
+          await fetchOverallPerformance();
         } else if (isManager) {
-          // Department managers see their department
+          // Department head chỉ xem được kế hoạch của phòng mình và kế hoạch toàn công ty
+          await fetchCompanyWidePlans();
           await fetchDepartmentPlans();
         } else {
-          // Regular employees see their reviews
+          // Nhân viên chỉ xem được kế hoạch toàn công ty và đánh giá của mình
+          await fetchCompanyWidePlans();
           await fetchEmployeeReviews();
         }
         
-        // Hợp nhất tất cả các loại kế hoạch
+        // Hợp nhất tất cả các loại kế hoạch dựa trên quyền
         updateAllPlans();
         
         setLoading(false);
@@ -459,17 +476,22 @@ const Performance: React.FC = () => {
 
   // Hàm hợp nhất tất cả các kế hoạch
   const updateAllPlans = () => {
+    console.log('Đang thực hiện updateAllPlans với monthFilter =', monthFilter, 'và yearFilter =', yearFilter);
+    
     let combinedPlans: PerformancePlan[] = [];
     
-    // Thêm kế hoạch toàn công ty
+    // Thêm kế hoạch toàn công ty cho tất cả người dùng
     combinedPlans = [...combinedPlans, ...companyWidePlans];
     
     // Thêm kế hoạch phòng ban dựa trên quyền người dùng
     if (isAdmin) {
+      // Admin xem được tất cả kế hoạch phòng ban
       combinedPlans = [...combinedPlans, ...allDepartmentPlans];
     } else if (isManager) {
+      // Department head chỉ xem được kế hoạch phòng mình
       combinedPlans = [...combinedPlans, ...plans];
     }
+    // Nhân viên thường không thêm kế hoạch phòng ban vào danh sách
     
     // Lọc theo năm
     if (yearFilter) {
@@ -481,9 +503,43 @@ const Performance: React.FC = () => {
     
     // Lọc theo tháng nếu có
     if (monthFilter > 0) {
+      console.log('Đang lọc theo tháng:', monthFilter);
+      
       combinedPlans = combinedPlans.filter(plan => {
-        const planMonth = new Date(plan.startDate).getMonth() + 1; // getMonth() trả về 0-11
-        return planMonth === monthFilter;
+        // Tạo các đối tượng Date từ chuỗi ngày
+        // Cần đảm bảo là không có lỗi do múi giờ
+        const startDateStr = plan.startDate.split('T')[0]; // Lấy phần ngày "YYYY-MM-DD"
+        const endDateStr = plan.endDate.split('T')[0]; // Lấy phần ngày "YYYY-MM-DD"
+        
+        // Tạo đối tượng Date mới với giờ là 12 trưa để tránh vấn đề về múi giờ
+        const planStartDate = new Date(`${startDateStr}T12:00:00`);
+        const planEndDate = new Date(`${endDateStr}T12:00:00`);
+        
+        // Tạo mốc thời gian đầu tháng và cuối tháng được chọn trong năm hiện tại
+        const currentMonthFilter = monthFilter; // Lấy giá trị hiện tại của biến
+        const filterStartDate = new Date(yearFilter, currentMonthFilter - 1, 1, 12, 0, 0); // Tháng 0-11, giờ là 12 trưa
+        // Tính ngày cuối cùng của tháng bằng cách lấy ngày 0 của tháng kế tiếp
+        const filterEndDate = new Date(yearFilter, currentMonthFilter, 0, 12, 0, 0); 
+        
+        // Debug
+        console.log('Filter for Plan ID:', plan.id);
+        console.log('Plan Start Date:', planStartDate.toISOString(), '(Original:', plan.startDate, ')');
+        console.log('Plan End Date:', planEndDate.toISOString(), '(Original:', plan.endDate, ')');
+        console.log('Filter Month:', currentMonthFilter);
+        console.log('Filter Start Date:', filterStartDate.toISOString(), 'Month:', filterStartDate.getMonth() + 1);
+        console.log('Filter End Date:', filterEndDate.toISOString(), 'Month:', filterEndDate.getMonth() + 1);
+        
+        // Kiểm tra xem kế hoạch có diễn ra trong tháng đã chọn không
+        const isStartInFilter = planStartDate >= filterStartDate && planStartDate <= filterEndDate;
+        const isEndInFilter = planEndDate >= filterStartDate && planEndDate <= filterEndDate;
+        const isFilterInPlan = planStartDate <= filterStartDate && planEndDate >= filterEndDate;
+        
+        console.log('Start in Filter:', isStartInFilter);
+        console.log('End in Filter:', isEndInFilter);
+        console.log('Filter within Plan:', isFilterInPlan);
+        console.log('Plan matches Filter:', isStartInFilter || isEndInFilter || isFilterInPlan);
+        
+        return isStartInFilter || isEndInFilter || isFilterInPlan;
       });
     }
     
@@ -502,7 +558,6 @@ const Performance: React.FC = () => {
       return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
     });
     
-    // In ra danh sách kế hoạch để kiểm tra trùng lặp
     console.log('Danh sách kế hoạch sau khi cập nhật:', combinedPlans.map(plan => `${plan.isCompanyWide ? 'Toàn công ty' : 'Phòng ban'}-${plan.id}: ${plan.title}`));
     
     setAllPlans(combinedPlans);
@@ -520,7 +575,7 @@ const Performance: React.FC = () => {
               value={yearFilter}
               onChange={(e) => {
                 setYearFilter(parseInt(e.target.value));
-                updateAllPlans();
+                // updateAllPlans được gọi bởi useEffect khi yearFilter thay đổi
               }}
             >
               <option value={new Date().getFullYear() - 2}>{new Date().getFullYear() - 2}</option>
@@ -534,8 +589,10 @@ const Performance: React.FC = () => {
               className="bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded leading-tight focus:outline-none focus:bg-white focus:border-blue-500"
               value={monthFilter}
               onChange={(e) => {
-                setMonthFilter(parseInt(e.target.value));
-                updateAllPlans();
+                const newMonth = parseInt(e.target.value);
+                console.log('Đã chọn tháng mới:', newMonth);
+                setMonthFilter(newMonth);
+                // updateAllPlans được gọi bởi useEffect khi monthFilter thay đổi
               }}
             >
               <option value={0}>Tất cả tháng</option>
@@ -553,7 +610,7 @@ const Performance: React.FC = () => {
               <option value={12}>Tháng 12</option>
             </select>
             
-            {/* Nút tạo kế hoạch mới */}
+            {/* Nút tạo kế hoạch mới - hiển thị nếu người dùng là admin/manager */}
             {(isAdmin || isManager) && (
               <button
                 className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded focus:outline-none focus:shadow-outline"
@@ -581,7 +638,7 @@ const Performance: React.FC = () => {
               {allPlans.length > 0 ? (
                 allPlans.map((plan: PerformancePlan) => (
                   <tr 
-                    key={`${plan.isCompanyWide ? 'company' : 'dept'}-plan-${plan.id}`}
+                    key={`plan-${plan.id}`}
                     className={`hover:bg-gray-50 ${selectedPlan?.id === plan.id ? 'bg-blue-50' : ''}`}
                   >
                     <td className="px-6 py-4">
@@ -646,8 +703,8 @@ const Performance: React.FC = () => {
                           </button>
                         )}
                         
-                        {/* Nút thêm đánh giá (chỉ cho admin và manager) */}
-                        {(isAdmin || isManager) && (
+                        {/* Nút thêm đánh giá (admin và manager phòng ban liên quan) */}
+                        {(isAdmin || (isManager && (!plan.departments || plan.departments.some(dept => dept.id === currentUser?.departmentId)))) && (
                           <button
                             className="text-blue-500 hover:text-blue-700"
                             onClick={() => {
@@ -769,265 +826,74 @@ const Performance: React.FC = () => {
         <h1 className="text-2xl font-bold">Quản lý hiệu suất</h1>
       </div>
 
-      {/* Company-wide Plans - Visible to all users */}
-      {renderAllPlans()}
+      {/* Hiển thị kế hoạch dựa trên vai trò */}
+      {!isRegularEmployee && renderAllPlans()}
 
-            {/* Đã xóa phần "Đánh giá hiệu suất theo phòng ban" */}
-
-      {/* Department Manager View */}
-      {isManager && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tiêu đề</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thời gian</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {plans.map((plan) => (
-                  <tr key={`department-plan-${plan.id}`}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{plan.title}</div>
-                      <div className="text-sm text-gray-500">{plan.description}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {new Date(plan.startDate).toLocaleDateString()} - {new Date(plan.endDate).toLocaleDateString()}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {new Date(plan.endDate) > new Date() ? (
-                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                          Đang diễn ra
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                          Đã kết thúc
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        className="text-indigo-600 hover:text-indigo-900 mr-4"
-                        onClick={() => navigate(`/performance/plan/${plan.id}`)}
-                      >
-                        Xem chi tiết
-                      </button>
-                      <button
-                        className="text-blue-600 hover:text-blue-900 mr-4"
-                        onClick={() => {
-                          setSelectedPlan(plan);
-                          fetchReviews(plan.id);
-                        }}
-                      >
-                        Xem đánh giá
-                      </button>
-                      {new Date(plan.endDate) > new Date() && (
-                        <button
-                          className="text-green-600 hover:text-green-900"
-                          onClick={() => {
-                            setSelectedPlan(plan);
-                            setIsSelectedPlanCompanyWide(plan.isCompanyWide || false);
-                            setIsCreateReviewModalOpen(true);
-                          }}
-                        >
-                          Thêm đánh giá
-                        </button>
-                      )}
-                    </td>
+      {/* Phần dành cho nhân viên - hiển thị chỉ đánh giá của mình */}
+      {isRegularEmployee && (
+        <div className="space-y-6 mt-8">
+          <h2 className="text-xl font-semibold">Đánh giá hiệu suất của tôi</h2>
+          {employeeReviews.length > 0 ? (
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kế hoạch</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày đánh giá</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Điểm đánh giá</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {selectedPlan && reviews.length > 0 && (
-            <div>
-              <h2 className="text-xl font-semibold mb-4">Đánh giá cho {selectedPlan.title}</h2>
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhân viên</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày đánh giá</th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Điểm trung bình</th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhận xét</th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {reviews.map((review: PerformanceReview) => (
-                      <tr key={`plan-review-${review.id}`} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10">
-                              <img
-                                className="h-10 w-10 rounded-full"
-                                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(review.employee?.fullName || '')}&background=random`}
-                                alt={review.employee?.fullName}
-                              />
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">
-                                {review.employee?.fullName}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {new Date(review.reviewDate).toLocaleDateString('vi-VN')}
-                          </div>
-                        </td>
-                        <td className={`px-6 py-4 whitespace-nowrap text-center ${getScoreClass(review.totalScore)}`}>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {employeeReviews.map((review: PerformanceReview) => (
+                    <tr key={`employee-review-${review.id}`}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{review.plan?.title || 'N/A'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {new Date(review.reviewDate).toLocaleDateString()}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className={`text-sm ${getScoreClass(review.totalScore)}`}>
                           {formatScore(review.totalScore)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            review.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                            review.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {review.status === 'APPROVED' ? 'Đã duyệt' :
-                             review.status === 'PENDING' ? 'Đang chờ' : 'Từ chối'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">{review.comments}</div>
-                          <div className="mt-1">
-                            <span className="text-xs font-medium text-green-600">Điểm mạnh:</span>
-                            <span className="text-xs text-gray-500 ml-1">{review.strengths}</span>
-                          </div>
-                          <div className="mt-1">
-                            <span className="text-xs font-medium text-red-600">Điểm yếu:</span>
-                            <span className="text-xs text-gray-500 ml-1">{review.weaknesses}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <button
-                            className="text-yellow-600 hover:text-yellow-900 mr-3"
-                            onClick={() => {
-                              setSelectedReview({
-                                reviewId: review.id,
-                                employeeName: review.employee?.fullName || `ID: ${review.employeeId}`,
-                                planTitle: selectedPlan.title,
-                                reviewDate: review.reviewDate,
-                                totalScore: review.totalScore.toString(),
-                                status: review.status,
-                                comments: review.comments,
-                                strengths: review.strengths,
-                                weaknesses: review.weaknesses,
-                                improvement: review.improvement
-                              });
-                              setIsEditReviewModalOpen(true);
-                            }}
-                            title="Chỉnh sửa"
-                          >
-                            <i className="fas fa-edit"></i>
-                          </button>
-                          <button
-                            className="text-red-600 hover:text-red-900"
-                            onClick={() => handleDeleteReview(review.id)}
-                            title="Xóa"
-                          >
-                            <i className="fas fa-trash"></i>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          review.status === 'APPROVED' 
+                            ? 'bg-green-100 text-green-800' 
+                            : review.status === 'REJECTED'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {review.status === 'APPROVED' 
+                            ? 'Đã phê duyệt' 
+                            : review.status === 'REJECTED'
+                              ? 'Đã từ chối'
+                              : 'Đang xử lý'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <button
+                          className="text-indigo-600 hover:text-indigo-900"
+                          onClick={() => handleViewReviewDetails(review.id)}
+                        >
+                          Xem chi tiết
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">
+              Bạn chưa có đánh giá hiệu suất nào.
             </div>
           )}
-        </div>
-      )}
-
-      {/* Regular Employee View */}
-      {isRegularEmployee && (
-        <div className="space-y-6">
-          <h2 className="text-xl font-semibold mb-4">Đánh giá hiệu suất của bạn</h2>
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kế hoạch</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Người đánh giá</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày đánh giá</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Điểm trung bình</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Chi tiết</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {employeeReviews.map((review: PerformanceReview) => (
-                  <tr key={`employee-review-${review.id}`} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{review.plan?.title}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-8 w-8">
-                          <img
-                            className="h-8 w-8 rounded-full"
-                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(review.reviewer?.fullName || '')}&background=random`}
-                            alt={review.reviewer?.fullName}
-                          />
-                        </div>
-                        <div className="ml-3">
-                          <div className="text-sm font-medium text-gray-900">{review.reviewer?.fullName}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {new Date(review.reviewDate).toLocaleDateString('vi-VN')}
-                      </div>
-                    </td>
-                    <td className={`px-6 py-4 whitespace-nowrap text-center ${getScoreClass(review.totalScore)}`}>
-                      {formatScore(review.totalScore)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        review.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                        review.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {review.status === 'APPROVED' ? 'Đã duyệt' :
-                         review.status === 'PENDING' ? 'Đang chờ' : 'Từ chối'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <button
-                        className="text-blue-600 hover:text-blue-900"
-                        onClick={() => handleViewReviewDetails(review.id)}
-                        title="Xem chi tiết"
-                        disabled={loadingReviewDetails}
-                      >
-                        {loadingReviewDetails ? (
-                          <i className="fas fa-spinner fa-spin"></i>
-                        ) : (
-                          <i className="fas fa-eye"></i>
-                        )}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {employeeReviews.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                      Chưa có đánh giá nào
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
       )}
 
