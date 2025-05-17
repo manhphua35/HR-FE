@@ -1,5 +1,5 @@
 import React from 'react';
-import { Employee } from '../../services/EmployeeService'; // Import interface Employee
+import { Employee } from '../../../services/EmployeeService'; // Import interface Employee
 
 interface ViewEmployeeModalProps {
   isOpen: boolean;
@@ -50,6 +50,7 @@ const ViewEmployeeModal: React.FC<ViewEmployeeModalProps> = ({ isOpen, onClose, 
             <div><strong className="text-gray-600">Điện thoại:</strong> {displayValue(employeeData.phone)}</div>
             <div><strong className="text-gray-600">Ngày vào làm:</strong> {displayValue(employeeData.hireDate?.split('T')[0])}</div>
             <div><strong className="text-gray-600">Trạng thái:</strong> {displayValue(employeeData.status)}</div>
+            {/* @ts-ignore */}
             <div><strong className="text-gray-600">Vai trò:</strong> {displayValue(employeeData.role?.name)}</div>
           </div>
         </div>

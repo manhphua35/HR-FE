@@ -51,5 +51,13 @@ export const AuthService = {
       '/auth/refresh-token' // Remove /api prefix
     );
     return response.data.data;
+  },
+
+  changePassword: async (oldPassword: string, newPassword: string): Promise<{ message: string }> => {
+    const response = await axiosInstance.put<ApiResponse<{ message: string }>>(
+      '/profile/change-password',
+      { oldPassword, newPassword }
+    );
+    return { message: response.data.message || 'Password changed successfully' };
   }
 };

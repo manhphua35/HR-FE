@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { EmployeeService, Employee } from '../../services/EmployeeService';
 import { useAuth } from '../../contexts/AuthContext';
-import ViewEmployeeModal from '../modals/ViewEmployeeModal';
+import ViewEmployeeModal from '../modals/EmployeeModal/ViewEmployeeModal';
 
 interface DepartmentEmployeesProps {
   departmentId?: string;

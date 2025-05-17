@@ -296,6 +296,34 @@ const PayrollPage: React.FC = () => {
     }).format(typeof amount === 'string' ? parseFloat(amount) : amount);
   };
 
+  // Thêm hàm mới để cập nhật ghi chú
+  const handleUpdateNote = async (payrollId: number, newNote: string) => {
+    if (!currentUser) {
+      setError('Vui lòng đăng nhập để thực hiện thao tác này');
+      return;
+    }
+    
+    try {
+      const updatePayload: PayrollUpdateData = {
+        note: newNote
+      };
+      
+      await PayrollService.updatePayroll(payrollId, updatePayload);
+      
+      // Cập nhật state - Sửa lại để chỉ lưu chính xác những gì người dùng nhập
+      setPayrollData(prevData => 
+        prevData.map(item => 
+          item.id === payrollId ? { ...item, note: newNote } : item
+        )
+      );
+      
+      setError(null);
+    } catch (err) {
+      console.error('Failed to update note:', err);
+      setError('Không thể cập nhật ghi chú');
+    }
+  };
+
   if (loading || authLoading) {
     return (
       <div className="flex items-center justify-center p-6">
@@ -355,7 +383,7 @@ const PayrollPage: React.FC = () => {
                   Tháng
                 </label>
                 <select
-                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
                 >
@@ -369,7 +397,7 @@ const PayrollPage: React.FC = () => {
                   Năm
                 </label>
                 <select
-                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                  className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2"
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(parseInt(e.target.value))}
                 >
@@ -443,7 +471,25 @@ const PayrollPage: React.FC = () => {
                       <td className="px-6 py-4 text-green-600">{formatMoney(item.bonus)}</td>
                       <td className="px-6 py-4 text-red-600">{formatMoney(item.tax)}</td>
                       <td className="px-6 py-4 font-semibold">{formatMoney(item.netSalary)}</td>
-                      <td className="px-6 py-4">{item.note || '-'}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          <input
+                            type="text"
+                            className="border-0 border-b border-gray-300 focus:border-blue-500 focus:ring-0 text-sm p-1 w-full bg-transparent"
+                            value={item.note || ''}
+                            onChange={(e) => {
+                              // Cập nhật giá trị hiển thị ngay lập tức trong state
+                              setPayrollData(prevData => 
+                                prevData.map(p => 
+                                  p.id === item.id ? { ...p, note: e.target.value } : p
+                                )
+                              );
+                            }}
+                            onBlur={(e) => handleUpdateNote(item.id, e.target.value)}
+                            placeholder="Nhập ghi chú..."
+                          />
+                        </div>
+                      </td>
                       <td className="px-6 py-4">
                         <button
                           onClick={() => openHistoryModal(item.id)}

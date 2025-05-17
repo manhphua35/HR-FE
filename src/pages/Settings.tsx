@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-// Import a service for changing password if available, e.g., import { AuthService } from '../services/AuthService';
+import { AuthService } from '../services/AuthService';
 
 const Settings: React.FC = () => {
   // State for settings
@@ -73,30 +73,24 @@ const Settings: React.FC = () => {
       setPasswordError('Mật khẩu mới và xác nhận mật khẩu không khớp.');
       return;
     }
-    if (newPassword.length < 6) { // Example validation
-       setPasswordError('Mật khẩu mới phải có ít nhất 6 ký tự.');
+    if (newPassword.length < 8) { // Backend yêu cầu mật khẩu ít nhất 8 ký tự
+       setPasswordError('Mật khẩu mới phải có ít nhất 8 ký tự.');
        return;
     }
 
     try {
-      // --- Placeholder for API Call ---
-      // Example: await AuthService.changePassword({ oldPassword, newPassword });
-      console.log('Attempting to change password...');
-      // Simulate API success
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
-      console.log('Password change successful (simulated)');
-      // --- End Placeholder ---
-
+      // Gọi API đổi mật khẩu từ AuthService
+      await AuthService.changePassword(oldPassword, newPassword);
+      
       setPasswordSuccess('Đổi mật khẩu thành công!');
-      // Optionally close modal after a delay
+      // Đóng modal sau một khoảng thời gian
       setTimeout(() => {
         closeChangePasswordModal();
       }, 2000);
 
     } catch (error: any) {
       console.error("Password change failed:", error);
-      // Example: setPasswordError(error.response?.data?.message || 'Đổi mật khẩu thất bại. Vui lòng thử lại.');
-      setPasswordError('Đổi mật khẩu thất bại. Mật khẩu cũ không đúng hoặc có lỗi xảy ra.'); // Simulated error
+      setPasswordError(error.response?.data?.message || 'Đổi mật khẩu thất bại. Vui lòng thử lại.');
     }
   };
 
@@ -126,9 +120,9 @@ const Settings: React.FC = () => {
 
         {/* Section: Language & Interface */}
         <div> {/* Last section doesn't need bottom border/margin */}
-          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Ngôn ngữ & Giao diện</h3>
+          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Giao diện</h3>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            {/* <div className="flex items-center justify-between">
               <label htmlFor="language-select" className="text-sm text-gray-700 dark:text-gray-300">Ngôn ngữ</label>
               <select
                 id="language-select"
@@ -139,7 +133,7 @@ const Settings: React.FC = () => {
                 <option value="vi">Tiếng Việt</option>
                 <option value="en">English</option>
               </select>
-            </div>
+            </div> */}
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-700 dark:text-gray-300">Chế độ tối (Dark Mode)</span>
               <label className="relative inline-flex items-center cursor-pointer">

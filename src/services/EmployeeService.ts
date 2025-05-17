@@ -41,10 +41,10 @@ export interface Employee {
   status?: string; // Status không có trong API mẫu, đánh dấu optional
   avatar: string | null; // Updated type to allow null (API mẫu không có)
   hireDate: string; // Giữ là string, cần xử lý định dạng nếu cần
-  role: Role | null; // Updated type
-  // Các trường khác từ API mẫu
+  // role: Role | null; // Updated type
+  roleId: number;
   departmentId: number | null;
-  roleType: string; // e.g., "SYSTEM_ADMIN", "HR_STAFF"
+  // roleType: string; // e.g., "SYSTEM_ADMIN", "HR_STAFF"
   remainingLeaves?: number; // Optional based on API data
   baseSalary?: string; // Optional based on API data, có thể là number?
   isActive?: boolean; // Optional based on API data
@@ -64,7 +64,7 @@ export interface CreateEmployeePayload {
   isActive?: boolean;
   avatar?: string | null; // Allow null
   hireDate: string;
-  roleType: string;
+  roleId: number;
   // Thêm các trường cần thiết khác khi tạo
   baseSalary?: string; // Hoặc number
   remainingLeaves?: number;

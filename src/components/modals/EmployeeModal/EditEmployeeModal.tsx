@@ -1,27 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { EmployeeService, Employee, CreateEmployeePayload } from '../../services/EmployeeService';
-import { AuthService, Role } from '../../services/AuthService';
-import { DepartmentService } from '../../services/DepartmentService';
+import { CreateEmployeePayload, EmployeeService, Employee as BaseEmployee } from '../../../services/EmployeeService';
+import { AuthService, Role } from '../../../services/AuthService';
+import { DepartmentService } from '../../../services/DepartmentService';
+import { roleTypeMapping, roleDisplayNameMapping } from './CreateEmployeeModal';
 
-interface CreateEmployeeModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void; // Callback khi tạo thành công
+// Mở rộng interface Employee để thêm trường role
+interface Employee extends BaseEmployee {
+  role?: {
+    id: number;
+    roleType: string;
+    name: string;
+    description?: string;
+  };
 }
 
-const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  // State cho các trường input - cập nhật theo CreateEmployeePayload
-  const [username, setUsername] = useState(''); // Thêm username
-  const [password, setPassword] = useState(''); // Thêm password
+interface EditEmployeeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  employeeData: Employee | null; // Dữ liệu nhân viên cần sửa
+}
+
+const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({ isOpen, onClose, onSuccess, employeeData }) => {
+  // State cho các trường input - sẽ được điền từ employeeData
+  const [username, setUsername] = useState(''); 
+  const [password, setPassword] = useState(''); // Mật khẩu thường không hiển thị/sửa trực tiếp
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  // Đổi state để lưu ID thay vì tên
+  // Đổi state để lưu ID
   const [departmentId, setDepartmentId] = useState<number | string>(''); // Lưu string từ input, parse sau
   const [phone, setPhone] = useState('');
   const [hireDate, setHireDate] = useState('');
   const [isActive, setIsActive] = useState(true);
-  const [roleType, setRoleType] = useState<string>(''); // Role type (e.g. "SYSTEM_ADMIN")
-  const [avatar, setAvatar] = useState('');
+  const [roleType, setRoleType] = useState<string>('');
+  const [avatar, setAvatar] = useState(''); 
 
   // State cho roles và departments
   const [roles, setRoles] = useState<Role[]>([]);
@@ -49,40 +61,74 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
     }
   }, [isOpen]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // useEffect để điền dữ liệu khi modal mở hoặc employeeData và roles thay đổi
+  useEffect(() => {
+    if (employeeData && roles.length > 0) {
+      setUsername(employeeData.username || '');
+      setFullName(employeeData.fullName || '');
+      setEmail(employeeData.email || '');
+      setDepartmentId(employeeData.department?.id || ''); // Gán ID (number) hoặc ''
+      setPhone(employeeData.phone || '');
+      // Định dạng lại ngày tháng nếu cần
+      setHireDate(employeeData.hireDate ? employeeData.hireDate.split('T')[0] : ''); 
+      setIsActive(employeeData.isActive ?? true);
+      
+      // Debug: log dữ liệu để kiểm tra
+      
+      // Lấy roleType từ dữ liệu API - dựa trên cấu trúc API thực tế
+      if (employeeData.role && employeeData.role.roleType) {
+        // Sử dụng trực tiếp roleType từ API
+        setRoleType(employeeData.role.roleType);
+      } else {
+        // Backup: sử dụng roleId nếu không có role.roleType
+        setRoleType('');
+        console.warn('Role information missing for employee', employeeData.id);
+      }
+      
+      setAvatar(employeeData.avatar || '');
+      setPassword(''); // Không điền mật khẩu cũ
+    }
+  }, [employeeData, roles]);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!employeeData) return; // Không có dữ liệu để sửa
+
     setIsLoading(true);
     setError(null);
+    
 
-    // Tạo payload theo interface CreateEmployeePayload
-    const employeeData: CreateEmployeePayload = {
+    // Tạo payload - Lưu ý: chỉ gửi các trường cần cập nhật
+    // Có thể cần interface UpdateEmployeePayload riêng
+    const updatedData: Partial<CreateEmployeePayload> = {
       username,
-      password: password || undefined, // Gửi undefined nếu rỗng, API sẽ xử lý
+      // Chỉ gửi password nếu người dùng nhập giá trị mới
+      ...(password && { password }), 
       fullName,
       email,
       // Sửa payload để gửi ID
-      departmentId: typeof departmentId === 'string' ? parseInt(departmentId, 10) : (departmentId || null), // Parse sang number, gửi null nếu rỗng/NaN
-      phone: phone || null, // Gửi null nếu rỗng
+      departmentId: typeof departmentId === 'string' ? parseInt(departmentId, 10) : (departmentId || null),
+      phone: phone || null,
       isActive,
-      avatar: avatar || undefined,
-      roleType,
-      hireDate: hireDate || new Date().toISOString().split('T')[0],
+      avatar: avatar || null,
+      roleId: roleTypeMapping[roleType],
+      hireDate,
     };
-    
-    // Kiểm tra departmentId sau khi parse (nếu không rỗng)
-    if (employeeData.departmentId !== null && isNaN(employeeData.departmentId)) {
+
+    // Validate roleId và departmentId
+     if (updatedData.departmentId !== null && updatedData.departmentId !== undefined && isNaN(updatedData.departmentId)) {
         setError("Department ID không hợp lệ.");
         setIsLoading(false);
         return;
-    }
-    // Có thể thêm validate cho positionId (UUID format) nếu cần
+     }
+     // Có thể thêm validate cho positionId (UUID format) nếu cần
 
     try {
-      await EmployeeService.createEmployee(employeeData);
+      await EmployeeService.updateEmployee(employeeData.id, updatedData);
       onSuccess(); // Gọi callback thành công
     } catch (err) {
-      console.error("Failed to create employee:", err);
-      setError("Không thể tạo nhân viên. Vui lòng thử lại.");
+      setError(`Cập nhật thất bại: ${err instanceof Error ? err.message : String(err)}`);
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -91,34 +137,35 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl p-5">
         {/* Modal Header */}
-        <div className="flex justify-between items-center p-4 border-b">
-          <h3 className="text-lg font-semibold text-gray-900">Thêm nhân viên mới</h3>
-          <button
+        <div className="flex justify-between items-center border-b pb-3 mb-5">
+          <h3 className="text-lg font-semibold text-gray-900">Chỉnh sửa thông tin nhân viên</h3>
+          <button 
+            type="button" 
+            className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" 
             onClick={onClose}
-            className="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center"
           >
             <i className="fas fa-times w-5 h-5"></i>
             <span className="sr-only">Đóng modal</span>
           </button>
         </div>
-
+        
         {/* Modal Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-              <span className="block sm:inline">{error}</span>
+            <div className="mb-4 text-red-600 bg-red-100 border border-red-400 text-sm p-3 rounded">
+              {error}
             </div>
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Username */}
             <div>
-              <label htmlFor="username" className="block mb-2 text-sm font-medium text-gray-900">Tên đăng nhập</label>
+              <label htmlFor="edit-username" className="block mb-2 text-sm font-medium text-gray-900">Tên đăng nhập</label>
               <input
                 type="text"
-                id="username"
+                id="edit-username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
@@ -127,22 +174,21 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
             </div>
              {/* Password */}
              <div>
-              <label htmlFor="password" className="block mb-2 text-sm font-medium text-gray-900">Mật khẩu</label>
+              <label htmlFor="edit-password" className="block mb-2 text-sm font-medium text-gray-900">Mật khẩu mới (để trống nếu không đổi)</label>
               <input
                 type="password"
-                id="password"
+                id="edit-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                placeholder="Để trống nếu không đổi" // Hoặc yêu cầu nhập nếu là tạo mới
               />
             </div>
             {/* Full Name */}
             <div>
-              <label htmlFor="fullName" className="block mb-2 text-sm font-medium text-gray-900">Họ và tên</label>
+              <label htmlFor="edit-fullName" className="block mb-2 text-sm font-medium text-gray-900">Họ và tên</label>
               <input
                 type="text"
-                id="fullName"
+                id="edit-fullName"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
@@ -151,10 +197,10 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
             </div>
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-900">Email</label>
+              <label htmlFor="edit-email" className="block mb-2 text-sm font-medium text-gray-900">Email</label>
               <input
                 type="email"
-                id="email"
+                id="edit-email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
@@ -163,9 +209,9 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
             </div>
             {/* Department Dropdown */}
             <div>
-              <label htmlFor="departmentId" className="block mb-2 text-sm font-medium text-gray-900">Phòng ban</label>
+              <label htmlFor="edit-departmentId" className="block mb-2 text-sm font-medium text-gray-900">Phòng ban</label>
               <select
-                id="departmentId"
+                id="edit-departmentId"
                 value={departmentId}
                 onChange={(e) => setDepartmentId(e.target.value)}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
@@ -180,10 +226,10 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
             </div>
             {/* Phone */}
             <div>
-              <label htmlFor="phone" className="block mb-2 text-sm font-medium text-gray-900">Số điện thoại</label>
+              <label htmlFor="edit-phone" className="block mb-2 text-sm font-medium text-gray-900">Số điện thoại</label>
               <input
                 type="tel"
-                id="phone"
+                id="edit-phone"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
@@ -191,24 +237,25 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
             </div>
             {/* Hire Date */}
             <div>
-              <label htmlFor="hireDate" className="block mb-2 text-sm font-medium text-gray-900">Ngày vào làm</label>
+              <label htmlFor="edit-hireDate" className="block mb-2 text-sm font-medium text-gray-900">Ngày vào làm</label>
               <input
                 type="date"
-                id="hireDate"
+                id="edit-hireDate"
                 value={hireDate}
                 onChange={(e) => setHireDate(e.target.value)}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                required // API yêu cầu hireDate
+                required 
               />
             </div>
              {/* Active Status */}
              <div>
-              <label htmlFor="isActive" className="block mb-2 text-sm font-medium text-gray-900">Trạng thái</label>
+              <label htmlFor="edit-isActive" className="block mb-2 text-sm font-medium text-gray-900">Trạng thái</label>
               <select
-                id="isActive"
+                id="edit-isActive"
                 value={isActive.toString()}
                 onChange={(e) => setIsActive(e.target.value === 'true')}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                required
               >
                 <option value="true">Đang làm việc</option>
                 <option value="false">Đã nghỉ việc</option>
@@ -216,9 +263,9 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
             </div>
              {/* Role Dropdown */}
              <div>
-              <label htmlFor="roleType" className="block mb-2 text-sm font-medium text-gray-900">Vai trò</label>
+              <label htmlFor="edit-roleType" className="block mb-2 text-sm font-medium text-gray-900">Vai trò</label>
               <select
-                id="roleType"
+                id="edit-roleType"
                 value={roleType}
                 onChange={(e) => setRoleType(e.target.value)}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
@@ -227,48 +274,38 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
                 <option value="">Chọn vai trò</option>
                 {roles.map((role) => (
                   <option key={role.type} value={role.type}>
-                    {role.name}
+                    {roleDisplayNameMapping[role.type] || role.name}
                   </option>
                 ))}
               </select>
             </div>
             {/* Avatar URL (Tạm thời) */}
             <div>
-              <label htmlFor="avatar" className="block mb-2 text-sm font-medium text-gray-900">URL Ảnh đại diện (Tạm thời)</label>
+              <label htmlFor="edit-avatar" className="block mb-2 text-sm font-medium text-gray-900">URL Ảnh đại diện</label>
               <input
                 type="text"
-                id="avatar"
+                id="edit-avatar"
                 value={avatar}
                 onChange={(e) => setAvatar(e.target.value)}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                placeholder="https://example.com/avatar.jpg"
               />
             </div>
           </div>
-
           {/* Modal Footer */}
-          <div className="flex items-center justify-end pt-4 border-t border-gray-200 rounded-b">
-            <button
-              type="button"
+          <div className="flex items-center justify-end pt-5 border-t mt-5">
+            <button 
+              type="button" 
               onClick={onClose}
-              disabled={isLoading}
-              className="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 mr-2 disabled:opacity-50"
+              className="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 mr-2"
             >
               Hủy
             </button>
-            <button
-              type="submit"
+            <button 
+              type="submit" 
               disabled={isLoading}
-              className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50"
+              className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50"
             >
-              {isLoading ? (
-                <>
-                  <i className="fas fa-spinner fa-spin mr-2"></i>
-                  Đang lưu...
-                </>
-              ) : (
-                'Thêm nhân viên'
-              )}
+              {isLoading ? 'Đang lưu...' : 'Lưu thay đổi'}
             </button>
           </div>
         </form>
@@ -277,4 +314,4 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
   );
 };
 
-export default CreateEmployeeModal;
+export default EditEmployeeModal;
