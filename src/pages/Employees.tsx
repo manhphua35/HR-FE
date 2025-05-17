@@ -366,7 +366,7 @@ const Employees: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     {/* Sửa lỗi: Hiển thị title của position, xử lý null */}
-                    <div className="text-sm text-gray-900">{employee.position?.title || 'N/A'}</div>
+                    <div className="text-sm text-gray-900">{employee.description || 'N/A'}</div>
                     {/* Sửa lỗi: Hiển thị name của department, xử lý null */}
                     <div className="text-xs text-gray-500">{employee.department?.name || 'N/A'}</div>
                   </td>

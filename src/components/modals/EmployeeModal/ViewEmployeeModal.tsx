@@ -43,8 +43,7 @@ const ViewEmployeeModal: React.FC<ViewEmployeeModalProps> = ({ isOpen, onClose, 
             <div><strong className="text-gray-600">Tên đăng nhập:</strong> {displayValue(employeeData.username)}</div>
             <div className="sm:col-span-2"><strong className="text-gray-600">Họ và tên:</strong> {displayValue(employeeData.fullName)}</div>
             <div className="sm:col-span-2"><strong className="text-gray-600">Email:</strong> {displayValue(employeeData.email)}</div>
-            {/* Sửa lỗi: Truyền position.title thay vì object position */}
-            <div><strong className="text-gray-600">Chức vụ:</strong> {displayValue(employeeData.position?.title)}</div>
+            <div className="sm:col-span-2"><strong className="text-gray-600">Mô tả vai trò:</strong> {displayValue(employeeData.description)}</div>
             {/* Sửa lỗi: Truyền department.name thay vì object department */}
             <div><strong className="text-gray-600">Phòng ban:</strong> {displayValue(employeeData.department?.name)}</div>
             <div><strong className="text-gray-600">Điện thoại:</strong> {displayValue(employeeData.phone)}</div>

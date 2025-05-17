@@ -35,6 +35,7 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
   // Đổi state để lưu ID thay vì tên
   const [departmentId, setDepartmentId] = useState<number | string>(''); // Lưu string từ input, parse sau
   const [phone, setPhone] = useState('');
+  const [description, setDescription] = useState(''); // Thêm state cho mô tả
   const [hireDate, setHireDate] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [roleType, setRoleType] = useState<string>(''); // Role type (e.g. "SYSTEM_ADMIN")
@@ -94,6 +95,7 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
       isActive,
       avatar: avatar || undefined,
       roleId: roleIdToSend, // <--- Sử dụng roleId số đã ánh xạ (đảm bảo là number sau khi kiểm tra)
+      description: description || null, // Thêm mô tả vai trò
       hireDate: hireDate || new Date().toISOString().split('T')[0],
     };
     
@@ -205,6 +207,18 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
                   </option>
                 ))}
               </select>
+            </div>
+            {/* Description - Mô tả vai trò */}
+            <div>
+              <label htmlFor="description" className="block mb-2 text-sm font-medium text-gray-900">Mô tả vai trò</label>
+              <textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                placeholder="Mô tả vai trò của nhân viên"
+                rows={3}
+              />
             </div>
             {/* Phone */}
             <div>

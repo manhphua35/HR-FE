@@ -29,6 +29,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({ isOpen, onClose, 
   const [email, setEmail] = useState('');
   // Đổi state để lưu ID
   const [departmentId, setDepartmentId] = useState<number | string>(''); // Lưu string từ input, parse sau
+  const [description, setDescription] = useState(''); // Thêm state cho mô tả vai trò
   const [phone, setPhone] = useState('');
   const [hireDate, setHireDate] = useState('');
   const [isActive, setIsActive] = useState(true);
@@ -68,6 +69,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({ isOpen, onClose, 
       setFullName(employeeData.fullName || '');
       setEmail(employeeData.email || '');
       setDepartmentId(employeeData.department?.id || ''); // Gán ID (number) hoặc ''
+      setDescription(employeeData.description || ''); // Đặt giá trị cho mô tả vai trò
       setPhone(employeeData.phone || '');
       // Định dạng lại ngày tháng nếu cần
       setHireDate(employeeData.hireDate ? employeeData.hireDate.split('T')[0] : ''); 
@@ -108,6 +110,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({ isOpen, onClose, 
       email,
       // Sửa payload để gửi ID
       departmentId: typeof departmentId === 'string' ? parseInt(departmentId, 10) : (departmentId || null),
+      description: description || null, // Thêm mô tả vai trò vào payload
       phone: phone || null,
       isActive,
       avatar: avatar || null,
@@ -223,6 +226,18 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({ isOpen, onClose, 
                   </option>
                 ))}
               </select>
+            </div>
+            {/* Description - Mô tả vai trò */}
+            <div>
+              <label htmlFor="edit-description" className="block mb-2 text-sm font-medium text-gray-900">Mô tả vai trò</label>
+              <textarea
+                id="edit-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                placeholder="Mô tả vai trò của nhân viên"
+                rows={3}
+              />
             </div>
             {/* Phone */}
             <div>

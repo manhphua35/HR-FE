@@ -44,6 +44,7 @@ export interface Employee {
   // role: Role | null; // Updated type
   roleId: number;
   departmentId: number | null;
+  description?: string | null; // Mô tả vai trò của nhân viên
   // roleType: string; // e.g., "SYSTEM_ADMIN", "HR_STAFF"
   remainingLeaves?: number; // Optional based on API data
   baseSalary?: string; // Optional based on API data, có thể là number?
@@ -65,6 +66,7 @@ export interface CreateEmployeePayload {
   avatar?: string | null; // Allow null
   hireDate: string;
   roleId: number;
+  description?: string | null; // Thêm mô tả vai trò
   // Thêm các trường cần thiết khác khi tạo
   baseSalary?: string; // Hoặc number
   remainingLeaves?: number;
