@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CreateEmployeePayload, EmployeeService} from '../../../services/EmployeeService';
 import { AuthService, Role } from '../../../services/AuthService';
 import { DepartmentService } from '../../../services/DepartmentService';
@@ -40,6 +40,8 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
   const [isActive, setIsActive] = useState(true);
   const [roleType, setRoleType] = useState<string>(''); // Role type (e.g. "SYSTEM_ADMIN")
   const [avatar, setAvatar] = useState('');
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // State cho roles và departments
   const [roles, setRoles] = useState<Role[]>([]);
@@ -67,7 +69,46 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
     }
   }, [isOpen]);
 
-  
+  // Xử lý khi chọn file ảnh
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Kiểm tra loại file
+    if (!file.type.match('image.*')) {
+      setError('Vui lòng chọn file hình ảnh');
+      return;
+    }
+    
+    // Giới hạn kích thước file (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Kích thước file không được vượt quá 2MB');
+      return;
+    }
+    
+    // Đọc file và chuyển thành base64
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setAvatar(base64String);
+      setAvatarPreview(base64String);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Xử lý khi click vào nút upload
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Xóa ảnh đã chọn
+  const handleRemoveImage = () => {
+    setAvatar('');
+    setAvatarPreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -18,6 +18,7 @@ interface SidebarProps {
   sidebarCollapsed: boolean;
   setSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
   accessibleItems: Array<{ path: string; name: string; icon: string; }>;
+  onViewProfile: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -26,7 +27,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   location,
   sidebarCollapsed,
   setSidebarCollapsed,
-  accessibleItems
+  accessibleItems,
+  onViewProfile
 }) => {
   const [departmentName, setDepartmentName] = useState<string | undefined>(undefined);
 
@@ -153,6 +155,13 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Logout */}
       <div className="p-4 border-t border-indigo-700 dark:border-indigo-900">
+        <button
+          onClick={() => onViewProfile()}
+          className={`flex items-center text-indigo-100 hover:text-indigo-200 dark:hover:text-indigo-300 w-full mb-3 ${sidebarCollapsed ? 'justify-center' : ''}`}
+        >
+          <i className={`fas fa-user-circle ${sidebarCollapsed ? '' : 'mr-3'}`}></i>
+          <span className={`nav-text transition-opacity duration-200 ${sidebarCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>Thông tin cá nhân</span>
+        </button>
         <button
           onClick={logout}
           className={`flex items-center text-indigo-100 hover:text-indigo-200 dark:hover:text-indigo-300 w-full ${sidebarCollapsed ? 'justify-center' : ''}`}

@@ -1,6 +1,6 @@
 import axiosInstance from '../config/axios';
 
-export type LeaveType = 'ANNUAL' | 'SICK' | 'OTHER';
+export type LeaveType = 'ANNUAL' | 'SICK' | 'OTHER' | 'HOLIDAY' | 'UNPAID';
 export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface LeaveRequest {
@@ -16,6 +16,8 @@ export interface LeaveRequest {
   approverId?: number | null;
   createdAt: string;
   updatedAt: string;
+  holidayBatchId?: string;
+  holidayBatchName?: string;
   // Các trường sau đây có thể được thiết lập bởi backend nếu có, hoặc không
   user?: {
     id: number;
@@ -37,6 +39,7 @@ interface GetAllLeavesParams {
   type?: LeaveType;
   userId?: number;
   departmentId?: number;
+  holidayBatchId?: string;
 }
 
 interface ApiResponse<T> {
@@ -51,6 +54,32 @@ interface CreateLeaveRequest {
   type: LeaveType;
   reason: string;
   numberOfDays: number;
+}
+
+interface CreateHolidayRequest {
+  startDate: string;
+  endDate: string;
+  reason: string;
+  departmentIds?: number[];
+  batchName?: string;
+}
+
+interface CreateHolidayResponse {
+  success: boolean;
+  count: number;
+  errors: any[];
+  batchId: string;
+}
+
+export interface HolidayBatch {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  reason: string;
+  createdBy: number;
+  createdAt: string;
+  leaveCount: number;
 }
 
 export const LeaveService = {
@@ -113,6 +142,46 @@ export const LeaveService = {
       return response.data.data;
     } catch (error) {
       console.error('Error creating leave:', error);
+      throw error;
+    }
+  },
+
+  async createHoliday(data: CreateHolidayRequest): Promise<CreateHolidayResponse> {
+    try {
+      const response = await axiosInstance.post<ApiResponse<CreateHolidayResponse>>('/leaves/create-holiday', data);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error creating holiday:', error);
+      throw error;
+    }
+  },
+
+  async getHolidayBatches(): Promise<HolidayBatch[]> {
+    try {
+      const response = await axiosInstance.get<ApiResponse<HolidayBatch[]>>('/leaves/holiday-batches');
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching holiday batches:', error);
+      throw error;
+    }
+  },
+
+  async getHolidayBatchDetails(batchId: string): Promise<{ batch: HolidayBatch, leaves: LeaveRequest[] }> {
+    try {
+      const response = await axiosInstance.get<ApiResponse<{ batch: HolidayBatch, leaves: LeaveRequest[] }>>(`/leaves/holiday-batches/${batchId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching holiday batch details:', error);
+      throw error;
+    }
+  },
+
+  async deleteHolidayBatch(batchId: string): Promise<{ success: boolean, deletedCount: number }> {
+    try {
+      const response = await axiosInstance.delete<ApiResponse<{ success: boolean, deletedCount: number }>>(`/leaves/holiday-batches/${batchId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error deleting holiday batch:', error);
       throw error;
     }
   },

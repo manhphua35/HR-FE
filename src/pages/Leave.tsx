@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { LeaveService, LeaveRequest } from '../services/LeaveService';
+import { LeaveService, LeaveRequest, LeaveStatus, LeaveType, HolidayBatch } from '../services/LeaveService';
 import { useAuth } from '../contexts/AuthContext';
 import { format } from 'date-fns';
-import CreateLeaveModal from '../components/modals/CreateLeaveModal';
 import axiosInstance from '../config/axios';
+import { CreateLeaveModal } from '../components/modals/LeaveModal';
 
 // Tương tự Attendance, tạo enum để quản lý chế độ xem
 enum ViewMode {
   DEFAULT = 'default',
   SPECIFIC_DATE = 'specificDate',
   HISTORY_MONTH = 'historyMonth'
+}
+
+// Enum để quản lý các tab
+enum TabView {
+  LEAVES = 'leaves',
+  HOLIDAY_BATCHES = 'holidayBatches'
 }
 
 // Tạo mảng các tháng để hiển thị dropdown
@@ -36,7 +42,44 @@ const years = Array.from({ length: 5 }, (_, index) => currentYear - index);
 interface UserInfo {
   id: number;
   fullName: string;
+  email: string;
+  department?: {
+    id: number;
+    name: string;
+  };
 }
+
+// Thêm helper function để chuyển đổi loại nghỉ thành nhãn tiếng Việt
+const getTypeLabel = (type: LeaveType): string => {
+  switch (type) {
+    case 'ANNUAL':
+      return 'Nghỉ phép năm';
+    case 'SICK':
+      return 'Nghỉ ốm';
+    case 'HOLIDAY':
+      return 'Nghỉ lễ';
+    case 'UNPAID':
+      return 'Nghỉ không lương';
+    case 'OTHER':
+      return 'Khác';
+    default:
+      return type;
+  }
+};
+
+// Thêm helper function để lấy màu cho trạng thái
+const getStatusColor = (status: LeaveStatus): string => {
+  switch (status) {
+    case 'PENDING':
+      return 'bg-yellow-100 text-yellow-800';
+    case 'APPROVED':
+      return 'bg-green-100 text-green-800';
+    case 'REJECTED':
+      return 'bg-red-100 text-red-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+};
 
 const Leave: React.FC = () => {
   const { currentUser } = useAuth();
@@ -45,16 +88,28 @@ const Leave: React.FC = () => {
 
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateHolidayModal, setShowCreateHolidayModal] = useState(false); // Modal tạo kỳ nghỉ lễ
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [usersCache, setUsersCache] = useState<Record<number, UserInfo>>({});
   const [loadingUsers, setLoadingUsers] = useState(false);
   
+  // State cho form tạo kỳ nghỉ lễ
+  const [holidayForm, setHolidayForm] = useState({
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
+    reason: '',
+    allDepartments: true,
+    departmentIds: [] as number[]
+  });
+  const [departments, setDepartments] = useState<{id: number, name: string}[]>([]);
+  const [processingHoliday, setProcessingHoliday] = useState(false);
+  
   // Filter states
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [status, setStatus] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
-  const [type, setType] = useState<'ALL' | 'ANNUAL' | 'SICK' | 'OTHER'>('ALL');
+  const [type, setType] = useState<'ALL' | 'ANNUAL' | 'SICK' | 'OTHER' | 'HOLIDAY' | 'UNPAID'>('ALL');
 
   // State cho chế độ xem
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.DEFAULT);
@@ -75,39 +130,136 @@ const Leave: React.FC = () => {
   const [selectedLeave, setSelectedLeave] = useState<LeaveRequest | null>(null);
   const [processingAction, setProcessingAction] = useState(false);
 
+  // State quản lý tab hiện tại
+  const [activeTab, setActiveTab] = useState<TabView>(TabView.LEAVES);
+  
+  // State cho đợt nghỉ
+  const [holidayBatches, setHolidayBatches] = useState<HolidayBatch[]>([]);
+  const [selectedBatch, setSelectedBatch] = useState<HolidayBatch | null>(null);
+  const [batchDetails, setBatchDetails] = useState<{ batch: HolidayBatch, leaves: LeaveRequest[] } | null>(null);
+  const [loadingBatches, setLoadingBatches] = useState(false);
+  const [deletingBatch, setDeletingBatch] = useState(false);
+  const [showDeleteBatchModal, setShowDeleteBatchModal] = useState(false);
+
+  // State cho phân trang đợt nghỉ
+  const [currentPage, setCurrentPage] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(9); // Số đợt nghỉ trên mỗi trang
+
+  // State cho phân trang đơn nghỉ phép
+  const [leaveCurrentPage, setLeaveCurrentPage] = useState(0);
+  const [leaveItemsPerPage, setLeaveItemsPerPage] = useState(10); // Số đơn nghỉ trên mỗi trang
+
   useEffect(() => {
     fetchLeaves();
   }, [isAdmin, startDate, endDate, status, type, viewMode, selectedDate, selectedMonth, selectedYear]);
 
+  // Thêm useEffect để lấy danh sách phòng ban
+  useEffect(() => {
+    if (isAdmin) {
+      fetchDepartments();
+    }
+  }, [isAdmin]);
+
+  // Thêm useEffect để lấy danh sách đợt nghỉ khi tab đổi hoặc component mount
+  useEffect(() => {
+    if (activeTab === TabView.HOLIDAY_BATCHES && isAdmin) {
+      fetchHolidayBatches();
+    }
+  }, [activeTab, isAdmin]);
+  
+  // Hàm lấy danh sách đợt nghỉ
+  const fetchHolidayBatches = async () => {
+    if (!isAdmin) return;
+    
+    try {
+      setLoadingBatches(true);
+      const batches = await LeaveService.getHolidayBatches();
+      setHolidayBatches(batches);
+    } catch (err) {
+      console.error('Failed to fetch holiday batches:', err);
+      setError('Không thể tải danh sách đợt nghỉ');
+    } finally {
+      setLoadingBatches(false);
+    }
+  };
+  
+  // Hàm lấy chi tiết đợt nghỉ
+  const fetchBatchDetails = async (batchId: string) => {
+    if (!isAdmin) return;
+    
+    try {
+      setLoadingBatches(true);
+      const details = await LeaveService.getHolidayBatchDetails(batchId);
+      setBatchDetails(details);
+    } catch (err) {
+      console.error('Failed to fetch batch details:', err);
+      setError('Không thể tải chi tiết đợt nghỉ');
+    } finally {
+      setLoadingBatches(false);
+    }
+  };
+  
+  // Hàm để hiển thị modal xác nhận xóa đợt nghỉ
+  const openDeleteBatchModal = (batch: HolidayBatch) => {
+    setSelectedBatch(batch);
+    setShowDeleteBatchModal(true);
+  };
+  
+  // Hàm xử lý xóa đợt nghỉ
+  const handleDeleteBatch = async () => {
+    if (!selectedBatch) return;
+    
+    try {
+      setDeletingBatch(true);
+      const result = await LeaveService.deleteHolidayBatch(selectedBatch.id);
+      setShowDeleteBatchModal(false);
+      setSelectedBatch(null);
+      setBatchDetails(null);
+      
+      // Cập nhật lại danh sách đợt nghỉ
+      await fetchHolidayBatches();
+      
+      // Hiển thị thông báo thành công
+      alert(`Đã xóa thành công ${result.deletedCount} đơn nghỉ phép thuộc đợt nghỉ này`);
+    } catch (err) {
+      console.error('Failed to delete holiday batch:', err);
+      setError('Không thể xóa đợt nghỉ');
+    } finally {
+      setDeletingBatch(false);
+    }
+  };
+  
+  // Hàm chuyển đổi giữa các tab
+  const handleTabChange = (tab: TabView) => {
+    setActiveTab(tab);
+    if (tab === TabView.HOLIDAY_BATCHES && isAdmin) {
+      // Reset state khi chuyển tab
+      setSelectedBatch(null);
+      setBatchDetails(null);
+    }
+  };
+  
+  // Hàm xử lý khi click vào một đợt nghỉ
+  const handleBatchClick = (batch: HolidayBatch) => {
+    setSelectedBatch(batch);
+    fetchBatchDetails(batch.id);
+  };
+
+  // Hàm lấy danh sách phòng ban
+  const fetchDepartments = async () => {
+    try {
+      const response = await axiosInstance.get('/departments');
+      setDepartments(response.data.data);
+    } catch (err) {
+      console.error('Failed to fetch departments:', err);
+    }
+  };
+
   // Hàm lấy thông tin người dùng dựa vào userId
   const fetchUserInfo = async (userIds: number[]) => {
-    if (userIds.length === 0) return;
-
-    // Lọc ra những userId chưa có trong cache
-    const uniqueIds = Array.from(new Set(userIds)).filter(id => !usersCache[id]);
-    if (uniqueIds.length === 0) return;
-
-    setLoadingUsers(true);
-    try {
-      // Lấy thông tin các người dùng chưa có trong cache
-      const response = await axiosInstance.get('/users/info', {
-        params: { userIds: uniqueIds.join(',') }
-      });
-
-      const newUserData = { ...usersCache };
-      response.data.data.forEach((user: any) => {
-        newUserData[user.id] = {
-          id: user.id,
-          fullName: user.fullName || `User ${user.id}`
-        };
-      });
-
-      setUsersCache(newUserData);
-    } catch (err) {
-      console.error('Failed to fetch user info:', err);
-    } finally {
-      setLoadingUsers(false);
-    }
+    // Không cần gọi API để lấy thông tin người dùng vì các thông tin cần thiết 
+    // đã được trả về từ API leaves với quan hệ user và approver
+    return;
   };
 
   const fetchLeaves = async () => {
@@ -147,16 +299,6 @@ const Leave: React.FC = () => {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       setLeaves(sortedData);
-
-      // Chuẩn bị danh sách userIds để lấy thông tin
-      const userIds = sortedData.map(leave => leave.userId);
-      const approverIds = sortedData
-        .filter(leave => leave.approverId)
-        .map(leave => leave.approverId!)
-        .filter(id => id !== null);
-      
-      // Lấy thông tin người dùng
-      await fetchUserInfo([...userIds, ...approverIds]);
       
       setError(null);
     } catch (err) {
@@ -249,35 +391,112 @@ const Leave: React.FC = () => {
     }
   };
 
-  // Hàm lấy tên người dùng từ cache hoặc hiển thị "User ID"
+  // Hàm lấy tên người dùng không cần sử dụng cache nữa
   const getUserName = (userId: number) => {
-    if (usersCache[userId]) {
-      return usersCache[userId].fullName;
-    }
+    // Đây là phương án dự phòng, chúng ta sẽ hiển thị người dùng trực tiếp từ cấu trúc user
     return `User ${userId}`;
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
-      case 'APPROVED': return 'bg-green-100 text-green-800';
-      case 'REJECTED': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'ANNUAL': return 'Nghỉ phép năm';
-      case 'SICK': return 'Nghỉ ốm';
-      case 'OTHER': return 'Khác';
-      default: return type;
-    }
   };
 
   // Hàm xử lý thay đổi chế độ xem
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode(mode);
+  };
+
+  // Hàm xử lý thay đổi form tạo kỳ nghỉ lễ
+  const handleHolidayFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    
+    if (name === 'allDepartments') {
+      // Xử lý checkbox
+      const checked = (e.target as HTMLInputElement).checked;
+      setHolidayForm(prev => ({
+        ...prev,
+        allDepartments: checked,
+        departmentIds: checked ? [] : prev.departmentIds
+      }));
+    } else {
+      setHolidayForm(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+
+  // Hàm xử lý thay đổi select nhiều phòng ban
+  const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedOptions = Array.from(e.target.selectedOptions).map(option => Number(option.value));
+    setHolidayForm(prev => ({
+      ...prev,
+      departmentIds: selectedOptions
+    }));
+  };
+
+  // Hàm tạo kỳ nghỉ lễ
+  const handleCreateHoliday = async () => {
+    try {
+      setProcessingHoliday(true);
+      setError(null);
+      
+      // Kiểm tra form
+      if (!holidayForm.startDate || !holidayForm.endDate || !holidayForm.reason) {
+        setError('Vui lòng điền đầy đủ thông tin');
+        setProcessingHoliday(false);
+        return;
+      }
+      
+      // Kiểm tra ngày bắt đầu và kết thúc
+      const startDate = new Date(holidayForm.startDate);
+      const endDate = new Date(holidayForm.endDate);
+      
+      if (startDate > endDate) {
+        setError('Ngày kết thúc phải sau ngày bắt đầu');
+        setProcessingHoliday(false);
+        return;
+      }
+      
+      const requestData = {
+        startDate: holidayForm.startDate,
+        endDate: holidayForm.endDate,
+        reason: holidayForm.reason,
+        departmentIds: holidayForm.allDepartments ? undefined : holidayForm.departmentIds
+      };
+      
+      const result = await LeaveService.createHoliday(requestData);
+      
+      // Đóng modal và hiển thị thông báo thành công
+      setShowCreateHolidayModal(false);
+      
+      // Reset form
+      setHolidayForm({
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: new Date().toISOString().split('T')[0],
+        reason: '',
+        allDepartments: true,
+        departmentIds: []
+      });
+      
+      // Cập nhật lại danh sách nghỉ phép
+      await fetchLeaves();
+      
+      // Hiển thị thông báo thành công
+      alert(`Đã tạo thành công ${result.count} đơn nghỉ lễ`);
+      
+    } catch (err: any) {
+      console.error('Failed to create holiday:', err);
+      setError(err.response?.data?.message || 'Không thể tạo kỳ nghỉ lễ');
+    } finally {
+      setProcessingHoliday(false);
+    }
+  };
+
+  // Hàm xử lý thay đổi trang
+  const handlePageChange = (selected: number) => {
+    setCurrentPage(selected);
+  };
+
+  // Hàm xử lý khi thay đổi trang đơn nghỉ phép
+  const handleLeavePageChange = (selected: number) => {
+    setLeaveCurrentPage(selected);
   };
 
   // Render các điều khiển chế độ xem
@@ -393,6 +612,459 @@ const Leave: React.FC = () => {
     }
   };
 
+  // Render buttons
+  const renderActionButtons = () => {
+    return (
+      <div className="mb-4 flex justify-between">
+        {/* Nút tạo đơn nghỉ phép */}
+        <button
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          onClick={() => setShowCreateModal(true)}
+        >
+          Tạo đơn nghỉ phép
+        </button>
+      </div>
+    );
+  };
+
+  // Thêm các hàm render bị thiếu
+  const renderFilters = () => {
+    return (
+      <div className="bg-white rounded-lg shadow p-6 space-y-4 mb-4">
+        <h2 className="text-lg font-medium text-gray-700">Bộ lọc</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Từ ngày
+            </label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Đến ngày
+            </label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Trạng thái
+            </label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as any)}
+              className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="ALL">Tất cả</option>
+              <option value="PENDING">Đang chờ</option>
+              <option value="APPROVED">Đã duyệt</option>
+              <option value="REJECTED">Từ chối</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Loại nghỉ
+            </label>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value as any)}
+              className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="ALL">Tất cả</option>
+              <option value="ANNUAL">Nghỉ phép năm</option>
+              <option value="SICK">Nghỉ ốm</option>
+              <option value="HOLIDAY">Nghỉ lễ</option>
+              <option value="UNPAID">Nghỉ không lương</option>
+              <option value="OTHER">Khác</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderLoading = () => {
+    return (
+      <div className="flex justify-center items-center h-40">
+        <div className="spinner-border text-blue-500" role="status">
+          <span className="sr-only">Đang tải...</span>
+        </div>
+      </div>
+    );
+  };
+
+  const renderLeaveTable = (customLeaves?: LeaveRequest[]) => {
+    const dataToRender = customLeaves || leaves;
+    // Tính toán phân trang cho đơn nghỉ
+    const paginatedLeaves = dataToRender.slice(
+      leaveCurrentPage * leaveItemsPerPage, 
+      (leaveCurrentPage + 1) * leaveItemsPerPage
+    );
+    
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left text-gray-500">
+          <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+            <tr>
+              <th scope="col" className="px-6 py-4">Nhân viên</th>
+              <th scope="col" className="px-6 py-4">Phòng ban</th>
+              <th scope="col" className="px-6 py-4">Loại nghỉ</th>
+              <th scope="col" className="px-6 py-4">Thời gian</th>
+              <th scope="col" className="px-6 py-4">Số ngày</th>
+              <th scope="col" className="px-6 py-4">Lý do</th>
+              <th scope="col" className="px-6 py-4">Trạng thái</th>
+              <th scope="col" className="px-6 py-4">Người duyệt</th>
+              {(isAdmin || isDepartmentHead) && <th scope="col" className="px-6 py-4">Thao tác</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedLeaves.length > 0 ? (
+              paginatedLeaves.map((leave) => (
+                <tr key={leave.id} className="bg-white border-b hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <img
+                          className="h-10 w-10 rounded-full"
+                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(leave.user?.fullName || 'Unknown')}&background=random`}
+                          alt={leave.user?.fullName || 'Unknown'}
+                        />
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {leave.user?.fullName || 'Unknown'}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {leave.user?.email || 'No email'}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900">{leave.user?.department?.name || 'N/A'}</div>
+                  </td>
+                  <td className="px-6 py-4">{getTypeLabel(leave.type)}</td>
+                  <td className="px-6 py-4">
+                    {format(new Date(leave.startDate), 'dd/MM/yyyy')} - {format(new Date(leave.endDate), 'dd/MM/yyyy')}
+                  </td>
+                  <td className="px-6 py-4">{leave.numberOfDays}</td>
+                  <td className="px-6 py-4">{leave.reason}</td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(leave.status)}`}>
+                      {leave.status === 'PENDING' && 'Đang chờ'}
+                      {leave.status === 'APPROVED' && 'Đã duyệt'}
+                      {leave.status === 'REJECTED' && 'Từ chối'}
+                    </span>
+                    {leave.status === 'REJECTED' && leave.rejectionReason && (
+                      <div className="text-xs text-red-600 mt-1" title={leave.rejectionReason}>
+                        Lý do: {leave.rejectionReason.length > 20 ? leave.rejectionReason.substring(0, 20) + '...' : leave.rejectionReason}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    {leave.approver ? (
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-8 w-8">
+                          <img
+                            className="h-8 w-8 rounded-full"
+                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(leave.approver.fullName)}&background=random`}
+                            alt={leave.approver.fullName}
+                          />
+                        </div>
+                        <div className="ml-3">
+                          <div className="text-sm font-medium text-gray-900">
+                            {leave.approver.fullName}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {leave.approver.email}
+                          </div>
+                        </div>
+                      </div>
+                    ) : '-'}
+                  </td>
+                  {(isAdmin || isDepartmentHead) && (
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-2">
+                        {leave.status === 'PENDING' && isAdmin && (
+                          <>
+                            <button
+                              onClick={() => openApproveModal(leave)}
+                              className="text-green-600 hover:text-green-900"
+                              title="Duyệt"
+                            >
+                              <i className="fas fa-check"></i>
+                            </button>
+                            <button
+                              onClick={() => openRejectModal(leave)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Từ chối"
+                            >
+                              <i className="fas fa-times"></i>
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={() => openDeleteModal(leave)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Xóa"
+                        >
+                          <i className="fas fa-trash-alt"></i>
+                        </button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={9} className="px-6 py-10 text-center text-gray-500">
+                  Không có dữ liệu nghỉ phép nào được tìm thấy
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+        
+        {/* Phân trang cho đơn nghỉ phép */}
+        {dataToRender.length > leaveItemsPerPage && (
+          <div className="flex justify-between items-center mt-4">
+            <div>
+              <span className="text-sm text-gray-700">
+                Hiển thị {leaveCurrentPage * leaveItemsPerPage + 1}-{Math.min((leaveCurrentPage + 1) * leaveItemsPerPage, dataToRender.length)} của {dataToRender.length} đơn nghỉ
+              </span>
+            </div>
+            <div className="flex space-x-1">
+              <button
+                onClick={() => handleLeavePageChange(leaveCurrentPage - 1)}
+                disabled={leaveCurrentPage === 0}
+                className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md disabled:opacity-50"
+              >
+                <i className="fas fa-chevron-left"></i>
+              </button>
+              {[...Array(Math.ceil(dataToRender.length / leaveItemsPerPage))].map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleLeavePageChange(i)}
+                  className={`px-3 py-1 text-sm font-medium rounded-md ${
+                    leaveCurrentPage === i
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 bg-white border border-gray-300'
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+              <button
+                onClick={() => handleLeavePageChange(leaveCurrentPage + 1)}
+                disabled={leaveCurrentPage === Math.ceil(dataToRender.length / leaveItemsPerPage) - 1}
+                className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md disabled:opacity-50"
+              >
+                <i className="fas fa-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Hàm render tabs
+  const renderTabs = () => {
+    return (
+      <div className="mb-4">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex">
+            <button
+              onClick={() => handleTabChange(TabView.LEAVES)}
+              className={`${
+                activeTab === TabView.LEAVES
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              } w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm sm:text-base`}
+            >
+              Đơn nghỉ phép
+            </button>
+            {isAdmin && (
+              <button
+                onClick={() => handleTabChange(TabView.HOLIDAY_BATCHES)}
+                className={`${
+                  activeTab === TabView.HOLIDAY_BATCHES
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm sm:text-base`}
+              >
+                Quản lý đợt nghỉ
+              </button>
+            )}
+          </nav>
+        </div>
+      </div>
+    );
+  };
+
+  // Hàm hiển thị danh sách đợt nghỉ
+  const renderHolidayBatches = () => {
+    if (loadingBatches && !batchDetails) {
+      return (
+        <div className="flex justify-center items-center h-40">
+          <div className="spinner-border text-blue-500" role="status">
+            <span className="sr-only">Đang tải...</span>
+          </div>
+        </div>
+      );
+    }
+
+    // Nếu đang xem chi tiết một đợt nghỉ
+    if (batchDetails) {
+      return (
+        <div>
+          <div className="mb-4 flex justify-between items-center">
+            <button
+              onClick={() => {
+                setSelectedBatch(null);
+                setBatchDetails(null);
+              }}
+              className="bg-gray-200 text-gray-700 px-3 py-1 rounded hover:bg-gray-300"
+            >
+              &larr; Quay lại
+            </button>
+            
+            <button
+              onClick={() => openDeleteBatchModal(batchDetails.batch)}
+              className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+            >
+              Xóa đợt nghỉ này
+            </button>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow p-4 mb-4">
+            <h3 className="text-lg font-semibold mb-2">{batchDetails.batch.name}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Thời gian:</p>
+                <p className="font-medium">
+                  {format(new Date(batchDetails.batch.startDate), 'dd/MM/yyyy')} - {format(new Date(batchDetails.batch.endDate), 'dd/MM/yyyy')}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Số đơn nghỉ:</p>
+                <p className="font-medium">{batchDetails.batch.leaveCount}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Lý do:</p>
+                <p className="font-medium">{batchDetails.batch.reason}</p>
+              </div>
+            </div>
+          </div>
+          
+          <h3 className="text-lg font-semibold mb-2">Danh sách đơn nghỉ trong đợt này</h3>
+          {renderLeaveTable(batchDetails.leaves)}
+        </div>
+      );
+    }
+
+    // Hiển thị danh sách đợt nghỉ với phân trang
+    return (
+      <div>
+        <div className="mb-4 flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Danh sách đợt nghỉ</h2>
+          <button
+            onClick={() => setShowCreateHolidayModal(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Tạo đợt nghỉ mới
+          </button>
+        </div>
+
+        {holidayBatches.length === 0 ? (
+          <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+            Chưa có đợt nghỉ nào được tạo
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {holidayBatches
+                .slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage)
+                .map(batch => (
+                  <div
+                    key={batch.id}
+                    onClick={() => handleBatchClick(batch)}
+                    className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow cursor-pointer"
+                  >
+                    <h3 className="text-lg font-semibold mb-2 truncate">{batch.name}</h3>
+                    <div className="text-sm mb-2">
+                      <span className="text-gray-500">Thời gian: </span>
+                      {format(new Date(batch.startDate), 'dd/MM/yyyy')} - {format(new Date(batch.endDate), 'dd/MM/yyyy')}
+                    </div>
+                    <div className="text-sm mb-2">
+                      <span className="text-gray-500">Lý do: </span>
+                      {batch.reason.length > 50 ? batch.reason.substring(0, 50) + '...' : batch.reason}
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-gray-500">Số đơn nghỉ: </span>
+                      <span className="font-medium">{batch.leaveCount}</span>
+                    </div>
+                    <div className="mt-2 text-xs text-gray-400">
+                      Tạo ngày {format(new Date(batch.createdAt), 'dd/MM/yyyy')}
+                    </div>
+                  </div>
+                ))}
+            </div>
+            
+            {/* Phân trang */}
+            {holidayBatches.length > itemsPerPage && (
+              <div className="flex justify-between items-center mt-4">
+                <div>
+                  <span className="text-sm text-gray-700">
+                    Hiển thị {currentPage * itemsPerPage + 1}-{Math.min((currentPage + 1) * itemsPerPage, holidayBatches.length)} của {holidayBatches.length} đợt nghỉ
+                  </span>
+                </div>
+                <div className="flex space-x-1">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 0}
+                    className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md disabled:opacity-50"
+                  >
+                    <i className="fas fa-chevron-left"></i>
+                  </button>
+                  {[...Array(Math.ceil(holidayBatches.length / itemsPerPage))].map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handlePageChange(i)}
+                      className={`px-3 py-1 text-sm font-medium rounded-md ${
+                        currentPage === i
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-700 bg-white border border-gray-300'
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === Math.ceil(holidayBatches.length / itemsPerPage) - 1}
+                    className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md disabled:opacity-50"
+                  >
+                    <i className="fas fa-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-6">
@@ -405,25 +1077,50 @@ const Leave: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">{renderViewTitle()}</h1>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-        >
-          <i className="fas fa-plus mr-2"></i>
-          Tạo đơn nghỉ phép
-        </button>
-      </div>
-
-      {/* Thêm điều khiển chế độ xem */}
-      {renderViewModeControls()}
-
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Quản lý nghỉ phép</h1>
+      
+      {/* Hiển thị lỗi */}
+      {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
+      
+      {/* Hiển thị tabs */}
+      {renderTabs()}
+      
+      {/* Nội dung dựa theo tab đang chọn */}
+      {activeTab === TabView.LEAVES ? (
+        <>
+          {/* Các nút điều khiển */}
+          {renderActionButtons()}
+          
+          {/* Điều khiển chế độ xem */}
+          {renderViewModeControls()}
+          
+          {/* Bộ lọc */}
+          {isAdmin && renderFilters()}
+          
+          {/* Danh sách nghỉ phép */}
+          <div className="bg-white rounded-lg shadow overflow-x-auto">
+            {loading ? renderLoading() : renderLeaveTable()}
+          </div>
+        </>
+      ) : (
+        /* Hiển thị danh sách đợt nghỉ nếu tab là HOLIDAY_BATCHES */
+        <>
+          {renderHolidayBatches()}
+        </>
+      )}
+      
+      {/* Modal tạo đơn nghỉ phép */}
       <CreateLeaveModal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        onSubmit={async (data) => {
+        onSubmit={async (data: {
+          startDate: string;
+          endDate: string;
+          type: LeaveType;
+          reason: string;
+          numberOfDays: number;
+        }) => {
           try {
             await LeaveService.createLeave(data);
             await fetchLeaves();
@@ -581,198 +1278,151 @@ const Leave: React.FC = () => {
         </div>
       )}
 
-      {error && (
-        <div className="p-4 text-sm text-red-700 bg-red-100 rounded-lg">
-          <i className="fas fa-exclamation-circle mr-2"></i>
-          {error}
-        </div>
-      )}
-
-      {viewMode === ViewMode.DEFAULT && isAdmin && (
-        <div className="bg-white rounded-lg shadow p-6 space-y-4">
-          <h2 className="text-lg font-medium text-gray-700">Bộ lọc</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Từ ngày
-              </label>
+      {/* Modal tạo kỳ nghỉ lễ */}
+      {showCreateHolidayModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg">
+            <h2 className="text-xl font-bold mb-4">Tạo đợt nghỉ lễ</h2>
+            
+            <div className="mb-4">
+              <label className="block text-gray-700 mb-2">Ngày bắt đầu</label>
               <input
                 type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                name="startDate"
+                value={holidayForm.startDate}
+                onChange={handleHolidayFormChange}
+                className="w-full p-2 border rounded"
+                required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Đến ngày
-              </label>
+            
+            <div className="mb-4">
+              <label className="block text-gray-700 mb-2">Ngày kết thúc</label>
               <input
                 type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                name="endDate"
+                value={holidayForm.endDate}
+                onChange={handleHolidayFormChange}
+                className="w-full p-2 border rounded"
+                required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Trạng thái
-              </label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as any)}
-                className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="ALL">Tất cả</option>
-                <option value="PENDING">Đang chờ</option>
-                <option value="APPROVED">Đã duyệt</option>
-                <option value="REJECTED">Từ chối</option>
-              </select>
+            
+            <div className="mb-4">
+              <label className="block text-gray-700 mb-2">Lý do nghỉ lễ</label>
+              <textarea
+                name="reason"
+                value={holidayForm.reason}
+                onChange={handleHolidayFormChange}
+                className="w-full p-2 border rounded"
+                rows={3}
+                required
+              ></textarea>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Loại nghỉ
+            
+            <div className="mb-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="allDepartments"
+                  checked={holidayForm.allDepartments}
+                  onChange={handleHolidayFormChange}
+                  className="mr-2"
+                />
+                <span>Áp dụng cho tất cả các phòng ban</span>
               </label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value as any)}
-                className="w-full p-2 border rounded-lg focus:ring-blue-500 focus:border-blue-500"
+            </div>
+            
+            {!holidayForm.allDepartments && (
+              <div className="mb-4">
+                <label className="block text-gray-700 mb-2">Chọn phòng ban</label>
+                <select
+                  multiple
+                  className="w-full p-2 border rounded"
+                  size={5}
+                  onChange={handleDepartmentChange}
+                  value={holidayForm.departmentIds.map(id => id.toString())}
+                >
+                  {departments.map(dept => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+                <small className="text-gray-500">Nhấn Ctrl hoặc Cmd để chọn nhiều phòng ban</small>
+              </div>
+            )}
+            
+            {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
+            
+            <div className="flex justify-end space-x-2">
+              <button
+                className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400"
+                onClick={() => setShowCreateHolidayModal(false)}
+                disabled={processingHoliday}
               >
-                <option value="ALL">Tất cả</option>
-                <option value="ANNUAL">Nghỉ phép năm</option>
-                <option value="SICK">Nghỉ ốm</option>
-                <option value="OTHER">Khác</option>
-              </select>
+                Hủy
+              </button>
+              
+              <button
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:bg-blue-300"
+                onClick={handleCreateHoliday}
+                disabled={processingHoliday}
+              >
+                {processingHoliday ? 'Đang xử lý...' : 'Tạo nghỉ lễ'}
+              </button>
             </div>
           </div>
         </div>
       )}
-
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left text-gray-500">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-4">Nhân viên</th>
-                <th scope="col" className="px-6 py-4">Phòng ban</th>
-                <th scope="col" className="px-6 py-4">Loại nghỉ</th>
-                <th scope="col" className="px-6 py-4">Thời gian</th>
-                <th scope="col" className="px-6 py-4">Số ngày</th>
-                <th scope="col" className="px-6 py-4">Lý do</th>
-                <th scope="col" className="px-6 py-4">Trạng thái</th>
-                <th scope="col" className="px-6 py-4">Người duyệt</th>
-                {(isAdmin || isDepartmentHead) && <th scope="col" className="px-6 py-4">Thao tác</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {leaves.length > 0 ? (
-                leaves.map((leave) => (
-                  <tr key={leave.id} className="bg-white border-b hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <img
-                            className="h-10 w-10 rounded-full"
-                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(leave.user?.fullName || 'Unknown')}&background=random`}
-                            alt={leave.user?.fullName || 'Unknown'}
-                          />
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {leave.user?.fullName || 'Unknown'}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {leave.user?.email || 'No email'}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">{leave.user?.department?.name || 'N/A'}</div>
-                    </td>
-                    <td className="px-6 py-4">{getTypeLabel(leave.type)}</td>
-                    <td className="px-6 py-4">
-                      {format(new Date(leave.startDate), 'dd/MM/yyyy')} - {format(new Date(leave.endDate), 'dd/MM/yyyy')}
-                    </td>
-                    <td className="px-6 py-4">{leave.numberOfDays}</td>
-                    <td className="px-6 py-4">{leave.reason}</td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(leave.status)}`}>
-                        {leave.status === 'PENDING' && 'Đang chờ'}
-                        {leave.status === 'APPROVED' && 'Đã duyệt'}
-                        {leave.status === 'REJECTED' && 'Từ chối'}
-                      </span>
-                      {leave.status === 'REJECTED' && leave.rejectionReason && (
-                        <div className="text-xs text-red-600 mt-1" title={leave.rejectionReason}>
-                          Lý do: {leave.rejectionReason.length > 20 ? leave.rejectionReason.substring(0, 20) + '...' : leave.rejectionReason}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      {leave.approver ? (
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-8 w-8">
-                            <img
-                              className="h-8 w-8 rounded-full"
-                              src={`https://ui-avatars.com/api/?name=${encodeURIComponent(leave.approver.fullName)}&background=random`}
-                              alt={leave.approver.fullName}
-                            />
-                          </div>
-                          <div className="ml-3">
-                            <div className="text-sm font-medium text-gray-900">
-                              {leave.approver.fullName}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {leave.approver.email}
-                            </div>
-                          </div>
-                        </div>
-                      ) : '-'}
-                    </td>
-                    {(isAdmin || isDepartmentHead) && (
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-2">
-                          {leave.status === 'PENDING' && isAdmin && (
-                            <>
-                              <button
-                                onClick={() => openApproveModal(leave)}
-                                className="text-green-600 hover:text-green-900"
-                                title="Duyệt"
-                              >
-                                <i className="fas fa-check"></i>
-                              </button>
-                              <button
-                                onClick={() => openRejectModal(leave)}
-                                className="text-red-600 hover:text-red-900"
-                                title="Từ chối"
-                              >
-                                <i className="fas fa-times"></i>
-                              </button>
-                            </>
-                          )}
-                          <button
-                            onClick={() => openDeleteModal(leave)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Xóa"
-                          >
-                            <i className="fas fa-trash-alt"></i>
-                          </button>
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={9} className="px-6 py-10 text-center text-gray-500">
-                    Không có dữ liệu nghỉ phép nào được tìm thấy
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      
+      {/* Modal xóa đợt nghỉ */}
+      {showDeleteBatchModal && selectedBatch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-full">
+            <h2 className="text-xl font-semibold mb-4">Xác nhận xóa đợt nghỉ</h2>
+            <div className="mb-6">
+              <p className="text-gray-700">Bạn có chắc muốn xóa đợt nghỉ <strong>{selectedBatch.name}</strong> không?</p>
+              <p className="text-gray-600 text-sm mt-2">
+                <span className="font-medium">Thời gian: </span>
+                {format(new Date(selectedBatch.startDate), 'dd/MM/yyyy')} - {format(new Date(selectedBatch.endDate), 'dd/MM/yyyy')}
+              </p>
+              <p className="text-gray-600 text-sm mt-2">
+                <span className="font-medium">Số đơn nghỉ sẽ bị xóa: </span>
+                {selectedBatch.leaveCount}
+              </p>
+              <p className="text-red-600 text-sm mt-2">
+                <i className="fas fa-exclamation-triangle mr-1"></i>
+                Tất cả đơn nghỉ thuộc đợt này sẽ bị xóa. Hành động này không thể hoàn tác!
+              </p>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowDeleteBatchModal(false);
+                  setSelectedBatch(null);
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+                disabled={deletingBatch}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleDeleteBatch}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700"
+                disabled={deletingBatch}
+              >
+                {deletingBatch ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin mr-2"></i>
+                    Đang xử lý...
+                  </>
+                ) : 'Xóa'}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

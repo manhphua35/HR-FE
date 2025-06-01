@@ -3,7 +3,6 @@ import { AuthService } from '../services/AuthService';
 
 const Settings: React.FC = () => {
   // State for settings
-  const [language, setLanguage] = useState<string>(localStorage.getItem('language') || 'vi');
   const [darkMode, setDarkMode] = useState<boolean>(localStorage.getItem('darkMode') === 'true');
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState<boolean>(false);
 
@@ -25,31 +24,13 @@ const Settings: React.FC = () => {
     }
   }, [darkMode]);
 
-  // Effect to load language (could be used for i18n libraries later)
-  useEffect(() => {
-    // Placeholder for potential i18n integration based on 'language' state
-    console.log(`Language set to: ${language}`);
-    // You might want to save language immediately or via save button
-    // localStorage.setItem('language', language);
-  }, [language]);
-
-
-  const handleLanguageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setLanguage(event.target.value);
-  };
+ 
+  
 
   const handleDarkModeToggle = () => {
     setDarkMode(!darkMode);
-    // Dark mode is saved immediately via useEffect
   };
-
-  const handleSaveChanges = () => {
-    // Save language preference
-    localStorage.setItem('language', language);
-    // Optionally show a success message
-    alert('Cài đặt ngôn ngữ đã được lưu!');
-    // Dark mode is saved on toggle
-  };
+  
 
   const openChangePasswordModal = () => {
     setIsChangePasswordModalOpen(true);
@@ -73,8 +54,8 @@ const Settings: React.FC = () => {
       setPasswordError('Mật khẩu mới và xác nhận mật khẩu không khớp.');
       return;
     }
-    if (newPassword.length < 8) { // Backend yêu cầu mật khẩu ít nhất 8 ký tự
-       setPasswordError('Mật khẩu mới phải có ít nhất 8 ký tự.');
+    if (newPassword.length < 6) { 
+       setPasswordError('Mật khẩu mới phải có ít nhất 6 ký tự.');
        return;
     }
 
@@ -149,12 +130,12 @@ const Settings: React.FC = () => {
           </div>
            {/* Save Button for Language */}
            <div className="mt-6 text-right">
-             <button
+             {/* <button
                onClick={handleSaveChanges}
                className="px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm transition duration-150 ease-in-out"
              >
                Lưu thay đổi
-             </button>
+             </button> */}
            </div>
         </div>
       </div>

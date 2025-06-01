@@ -2,14 +2,14 @@ import React from 'react';
 import { Link, Location } from 'react-router-dom'; // Import Location
 import { User } from '../types/api'; // Import User type
 
-// Define props for the Sidebar component
+// Định nghĩa props cho component Sidebar
 interface SidebarProps {
-  currentUser: User | null | undefined;
-  logout: () => void;
-  location: Location; // Use Location type from react-router-dom
-  sidebarCollapsed: boolean;
-  setSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
-  accessibleItems: Array<{ path: string; name: string; icon: string; }>; // Type for filtered items
+  currentUser: User | null | undefined; // Người dùng hiện tại
+  logout: () => void; // Hàm đăng xuất
+  location: Location; // Sử dụng kiểu Location từ react-router-dom
+  sidebarCollapsed: boolean; // Trạng thái thu gọn của sidebar
+  setSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>; // Hàm cập nhật trạng thái sidebar
+  accessibleItems: Array<{ path: string; name: string; icon: string; }>; // Danh sách các mục có thể truy cập
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -21,7 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   accessibleItems
 }) => {
 
-  // Move formatRole function here as it's only used in Sidebar
+  // Hàm định dạng vai trò người dùng (chuyển ROLE_ADMIN thành Admin)
   const formatRole = (roleType?: User['role']['roleType']) => {
     if (!roleType) return '';
     return roleType
@@ -31,13 +31,15 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
+    // Container chính của sidebar với trạng thái thu gọn/mở rộng
     <div className={`sidebar bg-indigo-800 text-white flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'w-20' : 'w-64'}`}>
-      {/* Logo and Toggle Button */}
+      {/* Phần logo và nút thu gọn */}
       <div className={`p-4 flex items-center border-b border-indigo-700 dark:border-indigo-900 relative ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
         <div className={`flex items-center ${sidebarCollapsed ? 'justify-center w-full' : ''}`}>
            <i className={`fas fa-users-cog text-2xl text-white ${sidebarCollapsed ? '' : 'mr-3'}`}></i>
            <span className={`logo-text text-xl font-bold text-white transition-opacity duration-200 ${sidebarCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>HR Management</span>
         </div>
+        {/* Nút chuyển đổi trạng thái thu gọn */}
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
           className="text-white hover:text-indigo-200 focus:outline-none p-2 rounded-md absolute top-1/2 -right-3 transform -translate-y-1/2 bg-indigo-700 dark:bg-indigo-600 shadow-md"
@@ -47,12 +49,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      {/* User Profile */}
+      {/* Thông tin người dùng */}
       <div className={`p-4 flex items-center border-b border-indigo-700 dark:border-indigo-900 ${sidebarCollapsed ? 'justify-center' : ''}`}>
         <img
-          src={currentUser?.avatar || '/logo192.png'} // Use local logo as fallback
+          src={currentUser?.avatar || '/logo192.png'} // Sử dụng logo mặc định nếu không có avatar
           alt="Profile"
-          className="w-10 h-10 rounded-full flex-shrink-0 object-cover" // Added object-cover
+          className="w-10 h-10 rounded-full flex-shrink-0 object-cover" // Thêm object-cover để ảnh không bị méo
         />
         <div className={`ml-3 transition-opacity duration-200 ${sidebarCollapsed ? 'opacity-0 hidden' : 'opacity-100'}`}>
           <div className="font-medium text-white">{currentUser?.fullName || 'User'}</div>
@@ -62,10 +64,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Navigation */}
+      {/* Phần điều hướng */}
       <nav className="flex-1 overflow-y-auto">
         <ul className="py-2">
-          {/* Map over the filtered accessibleItems */}
+          {/* Hiển thị các mục menu từ danh sách đã được lọc */}
           {accessibleItems.map((item) => (
             <li key={item.path}>
               <Link
@@ -82,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </ul>
       </nav>
 
-      {/* Logout */}
+      {/* Nút đăng xuất */}
       <div className="p-4 border-t border-indigo-700 dark:border-indigo-900">
         <button
           onClick={logout}

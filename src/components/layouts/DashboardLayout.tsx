@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { User } from '../../types/api'; // Keep User import
 import { routePermissions, Role } from '../../config/routePermissions'; // Import Role and config
 import Sidebar from './Sidebar'; // Cập nhật đường dẫn đến Sidebar
+import ProfileModal from '../modals/UserModal/ProfileModal'; // Import ProfileModal
 
 const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false); // Added state back
+  const [profileModalOpen, setProfileModalOpen] = useState(false); // State để điều khiển hiển thị modal
   const { currentUser, logout } = useAuth();
   const location = useLocation();
 
@@ -82,10 +83,19 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
   // Find the current page title using original logic (using the original unfiltered list)
   const currentPageTitle = navigationItems.find(item => item.path === location.pathname)?.name || 'Trang chủ';
 
+  // Hàm mở modal thông tin cá nhân
+  const handleViewProfile = () => {
+    setProfileModalOpen(true);
+  };
+
+  // Hàm đóng modal
+  const handleCloseProfileModal = () => {
+    setProfileModalOpen(false);
+  };
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Render the Sidebar component and pass necessary props */}
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-900 overflow-hidden">
+      {/* Sidebar */}
       <Sidebar
         currentUser={currentUser}
         logout={logout}
@@ -93,11 +103,11 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
         sidebarCollapsed={sidebarCollapsed}
         setSidebarCollapsed={setSidebarCollapsed}
         accessibleItems={accessibleItems}
+        onViewProfile={handleViewProfile} // Truyền hàm mở ProfileModal
       />
 
       {/* Main Content */}
-      {/* Adjusted margin-left if Sidebar width changes */}
-      <div className={`flex-1 overflow-hidden flex flex-col transition-all duration-300 ml-2 border-l border-gray-200`}>
+      <div className="flex flex-col flex-1 overflow-hidden">
         {/* Top Navigation */}
         {/* Added dark mode classes */}
         <header className="bg-white dark:bg-gray-800 shadow-sm">
@@ -124,14 +134,19 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
           </div>
         </header>
 
-        {/* Page Content */}
-        {/* Added dark mode background */}
+        {/* Main Content */}
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-gray-900">
           <div className="px-8 py-6">
             {children} {/* Children components should handle their own dark mode styling */}
           </div>
         </main>
       </div>
+
+      {/* Profile Modal */}
+      <ProfileModal 
+        isOpen={profileModalOpen} 
+        onClose={handleCloseProfileModal} 
+      />
     </div>
   );
 };
