@@ -34,7 +34,7 @@ const ViewEmployeeModal: React.FC<ViewEmployeeModalProps> = ({ isOpen, onClose, 
           <div className="flex justify-center mb-4">
              <img
                 className="h-24 w-24 rounded-full object-cover"
-                src={employeeData.avatar || '/logo192.png'} // Use local logo as fallback
+                src={employeeData.avatar || '/logo192.png'} 
                 alt={employeeData.fullName}
              />
           </div>

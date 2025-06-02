@@ -128,10 +128,10 @@ const DepartmentEmployees: React.FC<DepartmentEmployeesProps> = ({ departmentId 
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{employee.position?.title || 'N/A'}</div>
+                    <div className="text-sm text-gray-900">{employee.position?.title || 'Nhân Viên'}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{employee.phone || 'N/A'}</div>
+                    <div className="text-sm text-gray-900">{employee.phone || ''}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">

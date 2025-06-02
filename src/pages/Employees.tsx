@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { EmployeeService, Employee } from '../services/EmployeeService';
-// Import các modal
 import ConfirmDeleteModal from '../components/modals/ConfirmDeleteModal'; // Import modal xác nhận xóa
 import { useAuth } from '../contexts/AuthContext';
 import EditEmployeeModal from '../components/modals/EmployeeModal/EditEmployeeModal';
 import CreateEmployeeModal from '../components/modals/EmployeeModal/CreateEmployeeModal';
 import ViewEmployeeModal from '../components/modals/EmployeeModal/ViewEmployeeModal';
 
-// Định nghĩa các trạng thái có thể có để lọc, dựa trên trường `isActive` từ API
 const POSSIBLE_STATUSES = ['Đang làm việc', 'Đã nghỉ việc'];
 
-// Không cần STATUS_MAP nữa vì lọc trực tiếp bằng isActive
 
 const Employees: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);

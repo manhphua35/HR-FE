@@ -133,9 +133,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentUser(standardizedUser);
       setIsAuthenticated(!!standardizedUser); // Set authenticated based on successful standardization
 
-    } catch (error:any) {
+    } catch (error) {
       console.log('Login failed:', error);
-      throw new Error(`Login failed: ${error.message}`);
+      throw error;
     }
   };
 

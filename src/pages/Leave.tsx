@@ -265,9 +265,7 @@ const Leave: React.FC = () => {
   const fetchLeaves = async () => {
     try {
       setLoading(true);
-      let data: LeaveRequest[];
-
-      switch (viewMode) {
+      let data: LeaveRequest[];      switch (viewMode) {
         case ViewMode.SPECIFIC_DATE:
           // Lấy dữ liệu nghỉ phép cho ngày cụ thể
           data = await LeaveService.getLeavesBySpecificDate(selectedDate);
@@ -280,15 +278,21 @@ const Leave: React.FC = () => {
           
         default:
           // Chế độ mặc định - lấy theo filter
+          const params: any = {};
+          if (startDate) params.startDate = startDate;
+          if (endDate) params.endDate = endDate;
+          if (status !== 'ALL') params.status = status;
+          if (type !== 'ALL') params.type = type;
+          
           if (isAdmin) {
-            const params: any = {};
-            if (startDate) params.startDate = startDate;
-            if (endDate) params.endDate = endDate;
-            if (status !== 'ALL') params.status = status;
-            if (type !== 'ALL') params.type = type;
-            
+            // Admin và HR xem tất cả đơn
             data = await LeaveService.getAllLeaves(params);
+          } else if (isDepartmentHead && currentUser?.departmentId) {
+            // Trưởng phòng xem đơn của phòng ban mình
+            params.departmentId = currentUser.departmentId;
+            data = await LeaveService.getDepartmentLeaves(params);
           } else {
+            // Nhân viên thường chỉ xem đơn của mình
             data = await LeaveService.getMyLeaves();
           }
           break;

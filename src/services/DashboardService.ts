@@ -47,6 +47,7 @@ interface IEmployeeProfile {
   email: string;
   department?: string;
   position?: string;
+  description?: string;
 }
 
 interface IAttendanceSummary {
@@ -99,6 +100,7 @@ interface IEmployeeDashboardData {
   payroll: IPayrollSummary | null;
   training: ITrainingCourse[];
   performance: IPerformanceSummary | null;
+  description: string;
 }
 
 export class DashboardService {

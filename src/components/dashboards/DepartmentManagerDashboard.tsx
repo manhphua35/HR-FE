@@ -160,50 +160,7 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">Nhiệm vụ sắp tới</h3>
-          </div>
-          <div className="p-6">
-            <ul className="divide-y divide-gray-200">
-              {stats.pendingLeaveRequests > 0 && (
-                <li className="py-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Duyệt đơn nghỉ phép</p>
-                      <p className="text-sm text-gray-500">{stats.pendingLeaveRequests} đơn đang chờ</p>
-                    </div>
-                    <span className="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                      Ưu tiên cao
-                    </span>
-                  </div>
-                </li>
-              )}
-              <li className="py-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Họp đội nhóm</p>
-                    <p className="text-sm text-gray-500">Ngày mai lúc 10:00</p>
-                  </div>
-                  <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                    Đã lên lịch
-                  </span>
-                </div>
-              </li>
-              <li className="py-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Deadline dự án</p>
-                    <p className="text-sm text-gray-500">Còn 2 tuần nữa</p>
-                  </div>
-                  <span className="px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                    Sắp tới
-                  </span>
-                </div>
-              </li>
-            </ul>
-          </div>
-        </div>
+        
       </div>
 
       {/* Danh sách nhân viên trong phòng ban */}

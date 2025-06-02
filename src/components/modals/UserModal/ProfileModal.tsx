@@ -27,6 +27,7 @@ interface UserProfile {
   remainingLeaves: number;
   baseSalary: number;
   isActive: boolean;
+  avatar?: string;
 }
 
 interface ProfileModalProps {
@@ -103,9 +104,11 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
           ) : profile ? (
             <div className="space-y-6">
               <div className="flex flex-col sm:flex-row items-center gap-6 mb-6">
-                <div className="w-32 h-32 bg-gray-300 rounded-full flex items-center justify-center text-4xl text-gray-600">
-                  {profile.fullName ? profile.fullName.charAt(0).toUpperCase() : profile.username.charAt(0).toUpperCase()}
-                </div>
+                <img
+                  src={profile.avatar || '/logo192.png'}
+                  alt={profile.fullName || profile.username}
+                  className="w-24 h-24 rounded-full object-cover"
+                />
                 <div>
                   <h3 className="text-2xl font-bold">{profile.fullName || profile.username}</h3>
                   <p className="text-gray-600">{profile.role?.name || 'Không có vai trò'}</p>

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { routePermissions, Role } from '../../config/routePermissions'; // Import Role and config
 import Sidebar from './Sidebar'; // Cập nhật đường dẫn đến Sidebar
-import ProfileModal from '../modals/UserModal/ProfileModal'; // Import ProfileModal
+import ProfileModal from '../modals/UserModal/ProfileModal'; 
 
 const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false); // Added state back

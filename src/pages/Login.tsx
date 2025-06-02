@@ -58,25 +58,31 @@ const Login = () => {
 
       await login(username, password);
       navigate('/dashboard');
-    } catch (err) {
+    } catch (err)
+    {
+      console.error('Login error21:', err);
       const error = err as AxiosErrorWithResponse;
       
+      console.log('Login error1:', error);
       if (error.isAxiosError) {
-        // Handle API error responses
+        // Cải thiện thông báo lỗi cho người dùng
         const status = error.response?.status;
         
         if (status === 401) {
-          setError('Tên đăng nhập hoặc mật khẩu không hợp lệ');
+          setError('Tên đăng nhập hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại thông tin đăng nhập.');
         } else if (status === 404) {
-          setError('Không tìm thấy người dùng');
+          setError('Tài khoản không tồn tại trong hệ thống. Vui lòng kiểm tra lại tên đăng nhập.');
+        } else if (status === 403) {
+          setError('Tài khoản của bạn đã bị khóa hoặc không có quyền truy cập. Vui lòng liên hệ quản trị viên.');
+        } else if (status === 429) {
+          setError('Quá nhiều lần đăng nhập thất bại. Vui lòng thử lại sau ít phút.');
         } else if (error.response?.data.message) {
           setError(error.response.data.message);
         } else {
-          setError('Lỗi mạng. Vui lòng kiểm tra kết nối của bạn');
+          setError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại sau.');
         }
       } else {
-        
-        setError(`Đã xảy ra lỗi không mong muốn: ${error.message}`);
+        setError('Đã xảy ra lỗi trong quá trình đăng nhập. Vui lòng thử lại sau hoặc liên hệ hỗ trợ kỹ thuật.');
       }
       console.error('Login error:', error);
     } finally {

@@ -1,49 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { DashboardService, IEmployeeDashboardData, ITrainingCourse } from '../../services/DashboardService';
 
-// Define necessary types directly in the component file
-interface IEmployeeProfile {
-    id: number;
-    fullName: string;
-    email: string;
-    department?: string;
-    position?: string;
-}
 
-interface IAttendanceSummary {
-    totalWorkDays: number;
-    presentDays: number;
-    absentDays: number;
-    lateDays: number;
-}
 
-interface ILeaveSummary {
-    used: number;
-    remaining: number;
-    pending: number;
-}
-
-interface IPayrollSummary {
-    month: number;
-    year: number;
-    basicSalary: string; // API returns string, handle conversion if needed
-    totalAllowance: string;
-    totalDeduction: string;
-    totalBenefit: string;
-    bonus: string;
-    tax: string;
-    netSalary: string;
-    leaveDeductionAmount: string;
-    latePenaltyAmount: string;
-    isFinalized: boolean;
-}
-
-interface IPerformanceSummary {
-    period: string;
-    overallScore: string; // API returns string
-    strengths: string[];
-    improvements: string[];
-}
 
 interface EmployeeDashboardProps {
   userId: string;
@@ -80,7 +39,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ userId }) => {
   if (error) return <div className="p-4 text-red-500">{error}</div>;
   if (!data) return <div className="p-4">No data available</div>;
 
-  const { employee, attendance, leaves, payroll, training, performance } = data;
+  const { employee, attendance, leaves, payroll, training, performance, description } = data;
 
   return (
     <div>
@@ -91,8 +50,8 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({ userId }) => {
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Thông tin cá nhân</h3>
           <p><strong>Tên:</strong> {employee.fullName}</p>
           <p><strong>Email:</strong> {employee.email}</p>
-          <p><strong>Phòng ban:</strong> {employee.department || 'N/A'}</p>
-          <p><strong>Chức vụ:</strong> {employee.position || 'N/A'}</p>
+          <p><strong>Phòng ban:</strong> {employee.department || 'Không có'}</p>
+          <p><strong>Chức vụ:</strong> {employee.description || 'Nhân viên'}</p>
       </div>
 
       {/* Stats Cards */}

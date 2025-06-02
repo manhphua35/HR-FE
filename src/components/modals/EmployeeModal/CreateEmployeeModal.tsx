@@ -2,29 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CreateEmployeePayload, EmployeeService} from '../../../services/EmployeeService';
 import { AuthService, Role } from '../../../services/AuthService';
 import { DepartmentService } from '../../../services/DepartmentService';
+import { roleTypeMapping, roleDisplayNameMapping } from './mappings';
 
 interface CreateEmployeeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void; // Callback khi tạo thành công
 }
-
-
-export const roleTypeMapping : { [key: string]: number | undefined } = {
-  'SYSTEM_ADMIN': 1,
-  'HR_STAFF': 2,
-  'DEPARTMENT_HEAD': 3,
-  'EMPLOYEE': 4,
-};
-
-// Thêm mapping tên hiển thị tiếng Việt cho vai trò
-export const roleDisplayNameMapping: { [key: string]: string } = {
-  'SYSTEM_ADMIN': 'Quản trị viên hệ thống',
-  'HR_STAFF': 'Nhân viên HR',
-  'DEPARTMENT_HEAD': 'Trưởng phòng',
-  'EMPLOYEE': 'Nhân viên',
-  // Thêm các vai trò khác nếu có
-};
 
 const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClose, onSuccess }) => {
   // State cho các trường input - cập nhật theo CreateEmployeePayload
@@ -40,7 +24,11 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
   const [isActive, setIsActive] = useState(true);
   const [roleType, setRoleType] = useState<string>(''); // Role type (e.g. "SYSTEM_ADMIN")
   const [avatar, setAvatar] = useState('');
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  
+  // State mới cho xử lý ảnh
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // State cho roles và departments
@@ -72,42 +60,38 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
   // Xử lý khi chọn file ảnh
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    
-    // Kiểm tra loại file
-    if (!file.type.match('image.*')) {
-      setError('Vui lòng chọn file hình ảnh');
-      return;
+    if (file) {
+      setSelectedFile(file);
+      
+      // Tạo URL xem trước
+      const fileUrl = URL.createObjectURL(file);
+      setPreviewUrl(fileUrl);
     }
-    
-    // Giới hạn kích thước file (2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      setError('Kích thước file không được vượt quá 2MB');
-      return;
-    }
-    
-    // Đọc file và chuyển thành base64
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      setAvatar(base64String);
-      setAvatarPreview(base64String);
-    };
-    reader.readAsDataURL(file);
   };
 
-  // Xử lý khi click vào nút upload
-  const handleUploadClick = () => {
+  // Xử lý khi click vào nút chọn ảnh
+  const handleChooseFile = () => {
     fileInputRef.current?.click();
   };
 
-  // Xóa ảnh đã chọn
-  const handleRemoveImage = () => {
+  // Xử lý khi xóa ảnh đã chọn
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setPreviewUrl('');
     setAvatar('');
-    setAvatarPreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  // Hàm chuyển đổi file thành Base64
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -124,6 +108,25 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
       return;
     }
 
+    try {
+      // Xử lý ảnh nếu có file được chọn
+      let avatarToSend = avatar;
+      if (selectedFile) {
+        setIsProcessingImage(true);
+        try {
+          // Chuyển đổi file thành Base64
+          avatarToSend = await convertFileToBase64(selectedFile);
+        } catch (imgErr) {
+          console.error("Lỗi xử lý ảnh:", imgErr);
+          setError("Không thể xử lý ảnh. Vui lòng thử lại.");
+          setIsLoading(false);
+          setIsProcessingImage(false);
+          return;
+        } finally {
+          setIsProcessingImage(false);
+        }
+    }
+
     // Tạo payload theo interface CreateEmployeePayload
     const employeeData: CreateEmployeePayload = {
       username,
@@ -134,7 +137,7 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
       departmentId: typeof departmentId === 'string' ? parseInt(departmentId, 10) : (departmentId || null), // Parse sang number, gửi null nếu rỗng/NaN
       phone: phone || null, // Gửi null nếu rỗng
       isActive,
-      avatar: avatar || undefined,
+        avatar: avatarToSend || undefined,
       roleId: roleIdToSend, // <--- Sử dụng roleId số đã ánh xạ (đảm bảo là number sau khi kiểm tra)
       description: description || null, // Thêm mô tả vai trò
       hireDate: hireDate || new Date().toISOString().split('T')[0],
@@ -146,9 +149,7 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
         setIsLoading(false);
         return;
     }
-    // Có thể thêm validate cho positionId (UUID format) nếu cần
 
-    try {
       await EmployeeService.createEmployee(employeeData);
       onSuccess(); // Gọi callback thành công
     } catch (err) {
@@ -316,17 +317,75 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
                 ))}
               </select>
             </div>
-            {/* Avatar URL (Tạm thời) */}
-            <div>
-              <label htmlFor="avatar" className="block mb-2 text-sm font-medium text-gray-900">URL Ảnh đại diện (Tạm thời)</label>
+            {/* Avatar Upload - Thay thế input URL bằng tải file */}
+            <div className="md:col-span-2">
+              <label className="block mb-2 text-sm font-medium text-gray-900">Ảnh đại diện</label>
+              <div className="flex items-center space-x-4">
+                {/* Hiển thị ảnh xem trước nếu có */}
+                {previewUrl && (
+                  <div className="relative">
+                    <img 
+                      src={previewUrl} 
+                      alt="Avatar preview" 
+                      className="h-20 w-20 object-cover rounded-full"
+                    />
+                    <button 
+                      type="button"
+                      onClick={handleRemoveFile}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 text-xs"
+                      title="Xóa ảnh"
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </div>
+                )}
+                
+                {/* Input file ẩn */}
+                <input 
+                  type="file" 
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+                
+                {/* Button chọn file */}
+                <button
+                  type="button"
+                  onClick={handleChooseFile}
+                  className="py-2 px-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+                >
+                  <i className="fas fa-upload mr-2"></i>
+                  {selectedFile ? 'Đổi ảnh khác' : 'Chọn ảnh'}
+                </button>
+                
+                {selectedFile && (
+                  <span className="text-sm text-gray-500">
+                    {selectedFile.name} ({Math.round(selectedFile.size / 1024)} KB)
+                  </span>
+                )}
+              </div>
+              
+              {/* Hiển thị trạng thái xử lý ảnh */}
+              {isProcessingImage && (
+                <div className="mt-2 text-sm text-blue-500">
+                  <i className="fas fa-spinner fa-spin mr-2"></i>
+                  Đang xử lý ảnh...
+                </div>
+              )}
+              
+              {/* Cho phép nhập URL trực tiếp như phương án dự phòng */}
+              <div className="mt-3">
+                <label htmlFor="avatar" className="block mb-2 text-sm font-medium text-gray-500">Hoặc nhập URL ảnh</label>
               <input
                 type="text"
                 id="avatar"
                 value={avatar}
                 onChange={(e) => setAvatar(e.target.value)}
-                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                  className="bg-gray-50 border border-gray-300 text-gray-500 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                 placeholder="https://example.com/avatar.jpg"
               />
+              </div>
             </div>
           </div>
 
@@ -335,17 +394,17 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
             <button
               type="button"
               onClick={onClose}
-              disabled={isLoading}
+              disabled={isLoading || isProcessingImage}
               className="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-2.5 hover:text-gray-900 focus:z-10 mr-2 disabled:opacity-50"
             >
               Hủy
             </button>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || isProcessingImage}
               className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center disabled:opacity-50"
             >
-              {isLoading ? (
+              {isLoading || isProcessingImage ? (
                 <>
                   <i className="fas fa-spinner fa-spin mr-2"></i>
                   Đang lưu...

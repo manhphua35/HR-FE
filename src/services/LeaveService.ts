@@ -238,5 +238,15 @@ export const LeaveService = {
       console.error('Error rejecting leave:', error);
       throw error;
     }
+  },
+
+  async getDepartmentLeaves(params?: GetAllLeavesParams): Promise<LeaveRequest[]> {
+    try {
+      const response = await axiosInstance.get<ApiResponse<LeaveRequest[]>>('/leaves/department', { params });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching department leaves:', error);
+      throw error;
+    }
   }
 };
