@@ -462,7 +462,20 @@ const PayrollPage: React.FC = () => {
                 {currentItems.length > 0 ? (
                   currentItems.map((item) => (
                     <tr key={item.id} className="bg-white border-b hover:bg-gray-50">
-                      <td className="px-6 py-4">{item.user?.fullName}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                          <img
+                            src={item.user?.avatar || '/logo192.png'}
+                            alt={item.user?.fullName}
+                            className="w-8 h-8 rounded-full mr-3"
+                          />
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{item.user?.fullName || 'N/A'}</div>
+                            {/* Có thể thêm thông tin phụ như email, chức vụ */}
+                            <div className="text-xs text-gray-500">{item.user?.email}</div>
+                          </div>
+                        </div>
+                      </td>
                       <td className="px-6 py-4">{item.user?.department?.name || '-'}</td>
                       <td className="px-6 py-4">{formatMoney(item.baseSalary)}</td>
                       <td className="px-6 py-4 text-green-600">{formatMoney(item.totalAllowance)}</td>

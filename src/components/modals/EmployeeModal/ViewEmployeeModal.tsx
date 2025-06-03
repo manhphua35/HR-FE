@@ -11,7 +11,7 @@ const ViewEmployeeModal: React.FC<ViewEmployeeModalProps> = ({ isOpen, onClose, 
   if (!isOpen || !employeeData) return null;
 
   // Helper function để hiển thị giá trị hoặc 'N/A'
-  const displayValue = (value: string | number | undefined | null) => value || 'N/A';
+  const displayValue = (value: string | number | undefined | null) => value || 'Chưa có';
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
@@ -39,8 +39,8 @@ const ViewEmployeeModal: React.FC<ViewEmployeeModalProps> = ({ isOpen, onClose, 
              />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <div><strong className="text-gray-600">ID:</strong> {displayValue(employeeData.id)}</div>
-            <div><strong className="text-gray-600">Tên đăng nhập:</strong> {displayValue(employeeData.username)}</div>
+            {/* <div><strong className="text-gray-600">ID:</strong> {displayValue(employeeData.id)}</div>
+            <div><strong className="text-gray-600">Tên đăng nhập:</strong> {displayValue(employeeData.username)}</div> */}
             <div className="sm:col-span-2"><strong className="text-gray-600">Họ và tên:</strong> {displayValue(employeeData.fullName)}</div>
             <div className="sm:col-span-2"><strong className="text-gray-600">Email:</strong> {displayValue(employeeData.email)}</div>
             <div className="sm:col-span-2"><strong className="text-gray-600">Mô tả vai trò:</strong> {displayValue(employeeData.description)}</div>

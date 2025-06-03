@@ -417,7 +417,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({ isOpen, onClose, 
               )}
               
               {/* Cho phép nhập URL trực tiếp như phương án dự phòng */}
-              <div className="mt-3">
+              {/* <div className="mt-3">
                 <label htmlFor="edit-avatar" className="block mb-2 text-sm font-medium text-gray-500">Hoặc nhập URL ảnh</label>
               <input
                 type="text"
@@ -426,7 +426,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({ isOpen, onClose, 
                 onChange={(e) => setAvatar(e.target.value)}
                   className="bg-gray-50 border border-gray-300 text-gray-500 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
               />
-              </div>
+              </div> */}
             </div>
           </div>
           {/* Modal Footer */}

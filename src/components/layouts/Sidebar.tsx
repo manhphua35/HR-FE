@@ -65,18 +65,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   // Hàm định dạng vai trò + phòng ban
   const formatRoleWithDepartment = () => {
     const role = formatRole(currentUser?.role?.roleType);
-    
-    // Xác định tên phòng ban
-    // let deptName: string | undefined;
-
-    // if (typeof currentUser?.department === 'string') {
-    //   // Nếu department là chuỗi
-    //   deptName = currentUser.department;
-    // } else if (currentUser?.department && typeof currentUser.department === 'object') {
-    //   // Nếu department là đối tượng có thuộc tính name
-    //   const deptObject = currentUser.department as DepartmentObject;
-    //   deptName = deptObject.name;
-    // } 
+   
     if (!role) return '';
     
     // Nếu là Employee và có phòng ban, hiển thị "Nhân viên phòng {department}"

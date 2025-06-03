@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { PerformanceService } from '../services/PerformanceService';
-import { DepartmentService } from '../services/DepartmentService';
-import { EmployeeService, Employee as ApiEmployee } from '../services/EmployeeService';
+import { EmployeeService,} from '../services/EmployeeService';
 import { PerformancePlan, PerformanceReview } from '../types/api';
 import CreateReviewModal from '../components/modals/CreateReviewModal';
 import EditReviewModal from '../components/modals/EditReviewModal';
@@ -19,6 +18,7 @@ interface Employee {
     name: string;
   } | null;
   isActive?: boolean;
+  avatar?: string | null; // Thêm trường avatar
 }
 
 interface DepartmentEmployees {
@@ -169,7 +169,8 @@ const PlanDetail: React.FC = () => {
               email: employee.email,
               departmentId: employee.departmentId,
               department: employee.department,
-              isActive: employee.isActive
+              isActive: employee.isActive,
+              avatar: employee.avatar || null
             });
           }
         }
@@ -533,7 +534,7 @@ const PlanDetail: React.FC = () => {
                   {dept.employees.map(employee => {
                     const isReviewed = isEmployeeReviewed(employee.id);
                     const review = getEmployeeReview(employee.id);
-                    
+                    console.log('Review for employee:', employee);
                     return (
                       <tr key={employee.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -541,7 +542,7 @@ const PlanDetail: React.FC = () => {
                             <div className="flex-shrink-0 h-10 w-10">
                               <img
                                 className="h-10 w-10 rounded-full"
-                                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(employee.fullName)}&background=random`}
+                                src={employee.avatar || '/logo192.png'} // Fallback avatar
                                 alt={employee.fullName}
                               />
                             </div>

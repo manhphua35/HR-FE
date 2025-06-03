@@ -40,15 +40,6 @@ const months = [
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 5 }, (_, index) => currentYear - index);
 
-// Tạo mảng các tùy chọn xem lịch sử theo ngày
-const dayOptions = [
-  { value: 7, label: '7 ngày qua' },
-  { value: 14, label: '14 ngày qua' },
-  { value: 30, label: '30 ngày qua' },
-  { value: 60, label: '60 ngày qua' },
-  { value: 90, label: '90 ngày qua' }
-];
-
 const Attendance: React.FC = () => {
   const { currentUser } = useAuth();
   const isEmployee = currentUser?.role?.roleType === 'EMPLOYEE';
@@ -436,7 +427,7 @@ const Attendance: React.FC = () => {
                           <div className="flex-shrink-0 h-10 w-10">
                             <img
                               className="h-10 w-10 rounded-full object-cover"
-                              src="/logo192.png"
+                              src={record.user?.avatar || '/logo192.png'} // Use local logo as fallback
                               alt={record.user?.fullName || 'Employee'}
                             />
                           </div>

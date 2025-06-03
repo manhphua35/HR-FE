@@ -91,8 +91,7 @@ const Leave: React.FC = () => {
   const [showCreateHolidayModal, setShowCreateHolidayModal] = useState(false); // Modal tạo kỳ nghỉ lễ
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [usersCache, setUsersCache] = useState<Record<number, UserInfo>>({});
-  const [loadingUsers, setLoadingUsers] = useState(false);
+ 
   
   // State cho form tạo kỳ nghỉ lễ
   const [holidayForm, setHolidayForm] = useState({
@@ -144,10 +143,29 @@ const Leave: React.FC = () => {
   // State cho phân trang đợt nghỉ
   const [currentPage, setCurrentPage] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(9); // Số đợt nghỉ trên mỗi trang
-
   // State cho phân trang đơn nghỉ phép
   const [leaveCurrentPage, setLeaveCurrentPage] = useState(0);
   const [leaveItemsPerPage, setLeaveItemsPerPage] = useState(10); // Số đơn nghỉ trên mỗi trang
+
+  // Helper function to handle pagination navigation after deletion
+  const adjustPaginationAfterDeletion = (
+    currentItems: any[], 
+    currentPageIndex: number, 
+    itemsPerPageCount: number,
+    setPageFunction: (page: number) => void
+  ) => {
+    const totalPages = Math.ceil(currentItems.length / itemsPerPageCount);
+    
+    // If current page is beyond available pages, navigate to the last available page
+    if (currentPageIndex >= totalPages && totalPages > 0) {
+      setPageFunction(totalPages - 1);
+    }
+    // If current page becomes empty but there are still items, navigate to previous page
+    else if (currentPageIndex > 0 && currentItems.length > 0 && 
+             currentPageIndex * itemsPerPageCount >= currentItems.length) {
+      setPageFunction(currentPageIndex - 1);
+    }
+  };
 
   useEffect(() => {
     fetchLeaves();
@@ -166,13 +184,13 @@ const Leave: React.FC = () => {
       fetchHolidayBatches();
     }
   }, [activeTab, isAdmin]);
-  
-  // Hàm lấy danh sách đợt nghỉ
+    // Hàm lấy danh sách đợt nghỉ
   const fetchHolidayBatches = async () => {
     if (!isAdmin) return;
     
     try {
       setLoadingBatches(true);
+      setError(null); // Clear previous errors
       const batches = await LeaveService.getHolidayBatches();
       setHolidayBatches(batches);
     } catch (err) {
@@ -203,21 +221,36 @@ const Leave: React.FC = () => {
   const openDeleteBatchModal = (batch: HolidayBatch) => {
     setSelectedBatch(batch);
     setShowDeleteBatchModal(true);
-  };
-  
-  // Hàm xử lý xóa đợt nghỉ
+  };    // Hàm xử lý xóa đợt nghỉ
   const handleDeleteBatch = async () => {
     if (!selectedBatch) return;
     
     try {
       setDeletingBatch(true);
+      setError(null); // Clear any previous errors
+      
       const result = await LeaveService.deleteHolidayBatch(selectedBatch.id);
+      
+      // Đóng modal và reset state trước
       setShowDeleteBatchModal(false);
       setSelectedBatch(null);
       setBatchDetails(null);
       
-      // Cập nhật lại danh sách đợt nghỉ
+      // Force update danh sách đợt nghỉ và adjust pagination
+      setHolidayBatches(prev => {
+        const updatedBatches = prev.filter(batch => batch.id !== selectedBatch.id);
+        // Adjust pagination after state update
+        adjustPaginationAfterDeletion(updatedBatches, currentPage, itemsPerPage, setCurrentPage);
+        return updatedBatches;
+      });
+      
+      // Fetch lại data từ server để đảm bảo đồng bộ
       await fetchHolidayBatches();
+      
+      // Cập nhật lại danh sách leaves nếu cần
+      if (activeTab === TabView.LEAVES) {
+        await fetchLeaves();
+      }
       
       // Hiển thị thông báo thành công
       alert(`Đã xóa thành công ${result.deletedCount} đơn nghỉ phép thuộc đợt nghỉ này`);
@@ -228,14 +261,20 @@ const Leave: React.FC = () => {
       setDeletingBatch(false);
     }
   };
-  
-  // Hàm chuyển đổi giữa các tab
+    // Hàm chuyển đổi giữa các tab
   const handleTabChange = (tab: TabView) => {
     setActiveTab(tab);
+    setError(null); // Clear errors when switching tabs
+    
     if (tab === TabView.HOLIDAY_BATCHES && isAdmin) {
       // Reset state khi chuyển tab
       setSelectedBatch(null);
       setBatchDetails(null);
+      // Fetch data ngay khi chuyển tab
+      fetchHolidayBatches();
+    } else if (tab === TabView.LEAVES) {
+      // Refresh leaves data when switching back
+      fetchLeaves();
     }
   };
   
@@ -253,13 +292,6 @@ const Leave: React.FC = () => {
     } catch (err) {
       console.error('Failed to fetch departments:', err);
     }
-  };
-
-  // Hàm lấy thông tin người dùng dựa vào userId
-  const fetchUserInfo = async (userIds: number[]) => {
-    // Không cần gọi API để lấy thông tin người dùng vì các thông tin cần thiết 
-    // đã được trả về từ API leaves với quan hệ user và approver
-    return;
   };
 
   const fetchLeaves = async () => {
@@ -333,7 +365,6 @@ const Leave: React.FC = () => {
     setSelectedLeave(leave);
     setShowDeleteModal(true);
   };
-
   // Xử lý duyệt đơn
   const handleApproveLeave = async () => {
     if (!selectedLeaveId) return;
@@ -341,10 +372,42 @@ const Leave: React.FC = () => {
     try {
       setProcessingAction(true);
       await LeaveService.approveLeave(selectedLeaveId);
-      await fetchLeaves();
+      
+      // Optimistic update: Update status immediately
+      setLeaves(prev => 
+        prev.map(leave => 
+          leave.id === selectedLeaveId 
+            ? { ...leave, status: 'APPROVED' as LeaveStatus }
+            : leave
+        )
+      );
+      
+      // If viewing batch details, update batchDetails as well
+      if (batchDetails) {
+        setBatchDetails(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            leaves: prev.leaves.map(leave => 
+              leave.id === selectedLeaveId 
+                ? { ...leave, status: 'APPROVED' as LeaveStatus }
+                : leave
+            )
+          };
+        });
+      }
+      
       setShowApproveModal(false);
       setSelectedLeaveId(null);
       setSelectedLeave(null);
+      
+      // Fetch fresh data from server to ensure consistency
+      await fetchLeaves();
+      
+      // If viewing batch details, refresh batch details too
+      if (batchDetails && selectedBatch) {
+        await fetchBatchDetails(selectedBatch.id);
+      }
     } catch (err) {
       console.error('Failed to approve leave:', err);
       setError('Không thể duyệt đơn nghỉ phép');
@@ -352,7 +415,6 @@ const Leave: React.FC = () => {
       setProcessingAction(false);
     }
   };
-
   // Xử lý từ chối đơn
   const handleRejectLeave = async () => {
     if (!selectedLeaveId || !rejectReason.trim()) {
@@ -363,30 +425,100 @@ const Leave: React.FC = () => {
     try {
       setProcessingAction(true);
       await LeaveService.rejectLeave(selectedLeaveId, rejectReason);
+      
+      // Optimistic update: Update status immediately
+      setLeaves(prev => 
+        prev.map(leave => 
+          leave.id === selectedLeaveId 
+            ? { ...leave, status: 'REJECTED' as LeaveStatus, rejectionReason: rejectReason }
+            : leave
+        )
+      );
+      
+      // If viewing batch details, update batchDetails as well
+      if (batchDetails) {
+        setBatchDetails(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            leaves: prev.leaves.map(leave => 
+              leave.id === selectedLeaveId 
+                ? { ...leave, status: 'REJECTED' as LeaveStatus, rejectionReason: rejectReason }
+                : leave
+            )
+          };
+        });
+      }
+      
       setShowRejectModal(false);
       setRejectReason('');
       setSelectedLeaveId(null);
       setSelectedLeave(null);
+      
+      // Fetch fresh data from server to ensure consistency
       await fetchLeaves();
+      
+      // If viewing batch details, refresh batch details too
+      if (batchDetails && selectedBatch) {
+        await fetchBatchDetails(selectedBatch.id);
+      }
     } catch (err) {
       console.error('Failed to reject leave:', err);
       setError('Không thể từ chối đơn nghỉ phép');
     } finally {
       setProcessingAction(false);
     }
-  };
-
-  // Xử lý xóa đơn
+  };  // Xử lý xóa đơn
   const handleDeleteLeave = async () => {
     if (!selectedLeaveId) return;
 
     try {
       setProcessingAction(true);
       await LeaveService.deleteLeave(selectedLeaveId);
+      
+      // Optimistic update: Remove from current state immediately and adjust pagination
+      setLeaves(prev => {
+        const updatedLeaves = prev.filter(leave => leave.id !== selectedLeaveId);
+        // Adjust pagination after state update
+        adjustPaginationAfterDeletion(updatedLeaves, leaveCurrentPage, leaveItemsPerPage, setLeaveCurrentPage);
+        return updatedLeaves;
+      });
+      
+      // If viewing batch details, update batchDetails as well
+      if (batchDetails) {
+        setBatchDetails(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            leaves: prev.leaves.filter(leave => leave.id !== selectedLeaveId),
+            batch: {
+              ...prev.batch,
+              leaveCount: prev.batch.leaveCount - 1 // Update count
+            }
+          };
+        });
+        
+        // Also update the holiday batches list to reflect the new count
+        setHolidayBatches(prev => 
+          prev.map(batch => 
+            batch.id === batchDetails.batch.id 
+              ? { ...batch, leaveCount: batch.leaveCount - 1 }
+              : batch
+          )
+        );
+      }
+      
       setShowDeleteModal(false);
       setSelectedLeaveId(null);
       setSelectedLeave(null);
+      
+      // Fetch fresh data from server to ensure consistency
       await fetchLeaves();
+      
+      // If viewing batch details, refresh batch details too
+      if (batchDetails && selectedBatch) {
+        await fetchBatchDetails(selectedBatch.id);
+      }
     } catch (err) {
       console.error('Failed to delete leave:', err);
       setError('Không thể xóa đơn nghỉ phép');
@@ -395,13 +527,10 @@ const Leave: React.FC = () => {
     }
   };
 
-  // Hàm lấy tên người dùng không cần sử dụng cache nữa
   const getUserName = (userId: number) => {
-    // Đây là phương án dự phòng, chúng ta sẽ hiển thị người dùng trực tiếp từ cấu trúc user
     return `User ${userId}`;
   };
 
-  // Hàm xử lý thay đổi chế độ xem
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode(mode);
   };
@@ -434,7 +563,6 @@ const Leave: React.FC = () => {
       departmentIds: selectedOptions
     }));
   };
-
   // Hàm tạo kỳ nghỉ lễ
   const handleCreateHoliday = async () => {
     try {
@@ -479,8 +607,11 @@ const Leave: React.FC = () => {
         departmentIds: []
       });
       
-      // Cập nhật lại danh sách nghỉ phép
-      await fetchLeaves();
+      // Cập nhật lại danh sách nghỉ phép và đợt nghỉ
+      await Promise.all([
+        fetchLeaves(),
+        fetchHolidayBatches()
+      ]);
       
       // Hiển thị thông báo thành công
       alert(`Đã tạo thành công ${result.count} đơn nghỉ lễ`);
@@ -597,23 +728,6 @@ const Leave: React.FC = () => {
         )}
       </div>
     );
-  };
-
-  // Hiển thị tiêu đề dựa trên chế độ xem đang chọn
-  const renderViewTitle = () => {
-    switch (viewMode) {
-      case ViewMode.SPECIFIC_DATE:
-        // Định dạng lại ngày từ YYYY-MM-DD thành DD/MM/YYYY để hiển thị
-        const dateParts = selectedDate.split('-');
-        if (dateParts.length === 3) {
-          return `Dữ liệu nghỉ phép ngày ${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
-        }
-        return `Dữ liệu nghỉ phép ngày ${selectedDate}`;
-      case ViewMode.HISTORY_MONTH:
-        return `Dữ liệu nghỉ phép Tháng ${selectedMonth}/${selectedYear}`;
-      default:
-        return 'Quản lý nghỉ phép';
-    }
   };
 
   // Render buttons
@@ -739,7 +853,7 @@ const Leave: React.FC = () => {
                       <div className="flex-shrink-0 h-10 w-10">
                         <img
                           className="h-10 w-10 rounded-full"
-                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(leave.user?.fullName || 'Unknown')}&background=random`}
+                          src={leave.user?.avatar || '/logo192.png'}
                           alt={leave.user?.fullName || 'Unknown'}
                         />
                       </div>
@@ -776,11 +890,12 @@ const Leave: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     {leave.approver ? (
+                      console.log('leave.approver', leave.approver),
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-8 w-8">
                           <img
                             className="h-8 w-8 rounded-full"
-                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(leave.approver.fullName)}&background=random`}
+                            src={leave.approver.avatar || '/logo192.png'}
                             alt={leave.approver.fullName}
                           />
                         </div>
@@ -840,7 +955,7 @@ const Leave: React.FC = () => {
         
         {/* Phân trang cho đơn nghỉ phép */}
         {dataToRender.length > leaveItemsPerPage && (
-          <div className="flex justify-between items-center mt-4">
+          <div className="flex justify-between items-center mt-4 border-8 border-transparent">
             <div>
               <span className="text-sm text-gray-700">
                 Hiển thị {leaveCurrentPage * leaveItemsPerPage + 1}-{Math.min((leaveCurrentPage + 1) * leaveItemsPerPage, dataToRender.length)} của {dataToRender.length} đơn nghỉ

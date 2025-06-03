@@ -28,6 +28,7 @@ export interface User {
   isActive: boolean;
   role: Role;
   department: Department;
+  avatar?: string | null;
 }
 
 export interface LeaveRequest {

@@ -33,6 +33,7 @@ export interface Payroll {
       id: number;
       name: string;
     };
+    avatar?: string | null;
   };
 }
 
