@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { User } from '../../types/api';
-import { DepartmentService } from '../../services/DepartmentService';
 
 // Define an interface for Department object
 interface DepartmentObject {
@@ -30,29 +29,29 @@ const Sidebar: React.FC<SidebarProps> = ({
   accessibleItems,
   onViewProfile
 }) => {
-  const [departmentName, setDepartmentName] = useState<string | undefined>(undefined);
+  // const [departmentName, setDepartmentName] = useState<string | undefined>(undefined);
 
   // Fetch department name if needed
-  useEffect(() => {
-    const fetchDepartmentName = async () => {
-      // Chỉ fetch khi có departmentId nhưng không có tên phòng ban
-      if (currentUser?.departmentId && 
-          (!currentUser.department || 
-           (typeof currentUser.department === 'object' && 
-            !(currentUser.department as DepartmentObject)?.name))) {
-        try {
-          const departmentData = await DepartmentService.getDepartmentById(currentUser.departmentId);
-          if (departmentData) {
-            setDepartmentName(departmentData.name);
-          }
-        } catch (error) {
-          console.error('Error fetching department name:', error);
-        }
-      }
-    };
+  // useEffect(() => {
+  //   const fetchDepartmentName = async () => {
+  //     // Chỉ fetch khi có departmentId nhưng không có tên phòng ban
+  //     if (currentUser?.departmentId && 
+  //         (!currentUser.department || 
+  //          (typeof currentUser.department === 'object' && 
+  //           !(currentUser.department as DepartmentObject)?.name))) {
+  //       try {
+  //         const departmentData = await DepartmentService.getDepartmentById(currentUser.departmentId);
+  //         if (departmentData) {
+  //           setDepartmentName(departmentData.name);
+  //         }
+  //       } catch (error) {
+  //         console.error('Error fetching department name:', error);
+  //       }
+  //     }
+  //   };
 
-    fetchDepartmentName();
-  }, [currentUser]);
+  //   fetchDepartmentName();
+  // }, [currentUser]);
 
   // Hàm định dạng kiểu vai trò
   const formatRole = (roleType?: string) => {
@@ -68,39 +67,41 @@ const Sidebar: React.FC<SidebarProps> = ({
     const role = formatRole(currentUser?.role?.roleType);
     
     // Xác định tên phòng ban
-    let deptName: string | undefined;
+    // let deptName: string | undefined;
 
-    if (typeof currentUser?.department === 'string') {
-      // Nếu department là chuỗi
-      deptName = currentUser.department;
-    } else if (currentUser?.department && typeof currentUser.department === 'object') {
-      // Nếu department là đối tượng có thuộc tính name
-      const deptObject = currentUser.department as DepartmentObject;
-      deptName = deptObject.name;
-    } else if (departmentName) {
-      // Sử dụng tên phòng ban đã fetch từ useEffect
-      deptName = departmentName;
-    } else if (currentUser?.departmentId) {
-      // Nếu đang loading, hiển thị "Đang tải..."
-      deptName = "Đang tải...";
-    }
-    
+    // if (typeof currentUser?.department === 'string') {
+    //   // Nếu department là chuỗi
+    //   deptName = currentUser.department;
+    // } else if (currentUser?.department && typeof currentUser.department === 'object') {
+    //   // Nếu department là đối tượng có thuộc tính name
+    //   const deptObject = currentUser.department as DepartmentObject;
+    //   deptName = deptObject.name;
+    // } 
     if (!role) return '';
     
     // Nếu là Employee và có phòng ban, hiển thị "Nhân viên phòng {department}"
-    if (role === 'Employee' && deptName) {
-      return `Nhân viên phòng ${deptName}`;
+    if (role === 'Employee' ) {
+      return `Nhân viên `;
     }
-    
+
+    if(role === 'System Admin') {
+      return 'Quản trị hệ thống';
+    }
+
+    if(role === 'Hr Staff') {
+      return 'Nhân viên nhân sự';
+    }
+
     // Nếu là Department Head và có phòng ban, hiển thị "Trưởng phòng {department}"
-    if (role === 'Department Head' && deptName) {
-      return `Trưởng phòng ${deptName}`;
+    if (role === 'Department Head' ) {
+      return `Trưởng phòng `;
     }
     
     // Các vai trò khác hoặc không có phòng ban
     return role;
   };
 
+  console.log('Current User:', currentUser);
   return (
     <div className={`sidebar bg-indigo-800 text-white flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'w-20' : 'w-64'}`}>
       {/* Logo and Toggle Button */}
