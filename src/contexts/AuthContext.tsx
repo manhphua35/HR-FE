@@ -75,10 +75,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         console.log('[AuthContext] Không tìm thấy accessToken ban đầu.');
         // Giữ finalUser = null, finalIsAuthenticated = false
-      }
-
-      // Cập nhật state cùng lúc SAU KHI tất cả các hoạt động bất đồng bộ được giải quyết
+      }      // Cập nhật state cùng lúc SAU KHI tất cả các hoạt động bất đồng bộ được giải quyết
       console.log('[AuthContext] Đặt trạng thái cuối cùng:', { finalIsAuthenticated, finalUser });
+      console.log('[AuthContext] finalUser.role:', finalUser?.role);
+      console.log('[AuthContext] finalUser.role.roleType:', finalUser?.role?.roleType);
       setCurrentUser(finalUser);
       setIsAuthenticated(finalIsAuthenticated);
       setLoading(false); // Đặt loading thành false chỉ sau khi trạng thái cuối cùng được xác định và đặt

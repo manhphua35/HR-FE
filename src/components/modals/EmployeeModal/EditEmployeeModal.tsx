@@ -31,6 +31,9 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({ isOpen, onClose, 
   const [departmentId, setDepartmentId] = useState<number | string>(''); // Lưu string từ input, parse sau
   const [description, setDescription] = useState(''); // Thêm state cho mô tả vai trò
   const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState(''); // Thêm state cho địa chỉ
+  const [baseSalary, setBaseSalary] = useState<number | string>(''); // Thêm state cho lương cơ bản
+  const [remainingLeaves, setRemainingLeaves] = useState<number | string>(''); // Thêm state cho số ngày nghỉ
   const [hireDate, setHireDate] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [roleType, setRoleType] = useState<string>('');
@@ -77,6 +80,9 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({ isOpen, onClose, 
       setDepartmentId(employeeData.department?.id || ''); // Gán ID (number) hoặc ''
       setDescription(employeeData.description || ''); // Đặt giá trị cho mô tả vai trò
       setPhone(employeeData.phone || '');
+      setAddress(employeeData.address || ''); // Đặt giá trị cho địa chỉ
+      setBaseSalary(employeeData.baseSalary || ''); // Đặt giá trị cho lương cơ bản
+      setRemainingLeaves(employeeData.remainingLeaves || ''); // Đặt giá trị cho số ngày nghỉ
       // Định dạng lại ngày tháng nếu cần
       setHireDate(employeeData.hireDate ? employeeData.hireDate.split('T')[0] : ''); 
       setIsActive(employeeData.isActive ?? true);
@@ -178,6 +184,7 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({ isOpen, onClose, 
       departmentId: typeof departmentId === 'string' ? parseInt(departmentId, 10) : (departmentId || null),
       description: description || null, // Thêm mô tả vai trò vào payload
       phone: phone || null,
+      address: address || null, // Thêm địa chỉ vào payload
       isActive,
         avatar: avatarToSend || null,
       roleId: roleTypeMapping[roleType],
@@ -313,6 +320,18 @@ const EditEmployeeModal: React.FC<EditEmployeeModalProps> = ({ isOpen, onClose, 
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+              />
+            </div>
+            {/* Address */}
+            <div>
+              <label htmlFor="edit-address" className="block mb-2 text-sm font-medium text-gray-900">Địa chỉ</label>
+              <input
+                type="text"
+                id="edit-address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                placeholder="Nhập địa chỉ nhân viên"
               />
             </div>
             {/* Hire Date */}

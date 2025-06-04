@@ -19,6 +19,9 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
   // Đổi state để lưu ID thay vì tên
   const [departmentId, setDepartmentId] = useState<number | string>(''); // Lưu string từ input, parse sau
   const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState(''); // Thêm state cho địa chỉ
+  const [baseSalary, setBaseSalary] = useState<number | string>(''); // Thêm state cho lương cơ bản
+  const [remainingLeaves, setRemainingLeaves] = useState<number | string>(12); // Mặc định 12 ngày nghỉ
   const [description, setDescription] = useState(''); // Thêm state cho mô tả
   const [hireDate, setHireDate] = useState('');
   const [isActive, setIsActive] = useState(true);
@@ -136,8 +139,11 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
       // Sửa payload để gửi ID
       departmentId: typeof departmentId === 'string' ? parseInt(departmentId, 10) : (departmentId || null), // Parse sang number, gửi null nếu rỗng/NaN
       phone: phone || null, // Gửi null nếu rỗng
+      address: address || null, // Thêm địa chỉ
+      baseSalary: typeof baseSalary === 'string' ? (baseSalary ? parseInt(baseSalary, 10) : undefined) : baseSalary, // Parse lương
+      remainingLeaves: typeof remainingLeaves === 'string' ? parseInt(remainingLeaves, 10) : remainingLeaves, // Parse số ngày nghỉ
       isActive,
-        avatar: avatarToSend || undefined,
+      avatar: avatarToSend || undefined,
       roleId: roleIdToSend, // <--- Sử dụng roleId số đã ánh xạ (đảm bảo là number sau khi kiểm tra)
       description: description || null, // Thêm mô tả vai trò
       hireDate: hireDate || new Date().toISOString().split('T')[0],
@@ -273,6 +279,44 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
                 className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
               />
             </div>
+            {/* Address */}
+            <div>
+              <label htmlFor="address" className="block mb-2 text-sm font-medium text-gray-900">Địa chỉ</label>
+              <input
+                type="text"
+                id="address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                placeholder="Nhập địa chỉ nhân viên"
+              />
+            </div>
+            {/* Base Salary */}
+            <div>
+              <label htmlFor="baseSalary" className="block mb-2 text-sm font-medium text-gray-900">Lương cơ bản (VND)</label>
+              <input
+                type="number"
+                id="baseSalary"
+                value={baseSalary}
+                onChange={(e) => setBaseSalary(e.target.value)}
+                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                placeholder="0"
+                min="0"
+              />
+            </div>
+            {/* Remaining Leaves */}
+            <div>
+              <label htmlFor="remainingLeaves" className="block mb-2 text-sm font-medium text-gray-900">Số ngày nghỉ phép</label>
+              <input
+                type="number"
+                id="remainingLeaves"
+                value={remainingLeaves}
+                onChange={(e) => setRemainingLeaves(e.target.value)}
+                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                min="0"
+                max="365"
+              />
+            </div>
             {/* Hire Date */}
             <div>
               <label htmlFor="hireDate" className="block mb-2 text-sm font-medium text-gray-900">Ngày vào làm</label>
@@ -374,18 +418,7 @@ const CreateEmployeeModal: React.FC<CreateEmployeeModalProps> = ({ isOpen, onClo
                 </div>
               )}
               
-              {/* Cho phép nhập URL trực tiếp như phương án dự phòng */}
-              <div className="mt-3">
-                <label htmlFor="avatar" className="block mb-2 text-sm font-medium text-gray-500">Hoặc nhập URL ảnh</label>
-              <input
-                type="text"
-                id="avatar"
-                value={avatar}
-                onChange={(e) => setAvatar(e.target.value)}
-                  className="bg-gray-50 border border-gray-300 text-gray-500 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                placeholder="https://example.com/avatar.jpg"
-              />
-              </div>
+             
             </div>
           </div>
 

@@ -135,11 +135,12 @@ export interface PerformanceReview {
   improvement: string;
   strengths: string;
   weaknesses: string;
-  reviewDate: string;
-  plan?: {
+  reviewDate: string;  plan?: {
     id: number;
     title: string;
     description?: string;
+    startDate?: string;
+    endDate?: string;
     criteria?: {
       id: number;
       name: string;

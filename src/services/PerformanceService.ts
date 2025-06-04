@@ -98,7 +98,6 @@ export class PerformanceService {
     const response = await axios.post<ApiResponse<PerformanceReview>>('/performance/reviews/create', data);
     return response.data.data;
   }
-
   static async updateReview(reviewId: number, data: {
     reviewDate: string;
     scores: {
@@ -110,6 +109,7 @@ export class PerformanceService {
     strengths?: string;
     weaknesses?: string;
     improvement?: string;
+    status?: string;
   }): Promise<PerformanceReview> {
     const response = await axios.put<ApiResponse<PerformanceReview>>(`/performance/reviews/${reviewId}`, data);
     return response.data.data;

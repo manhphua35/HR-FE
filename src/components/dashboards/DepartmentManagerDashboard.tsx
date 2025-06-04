@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { DashboardService, DepartmentStats } from '../../services/DashboardService';
+import {
+  DashboardService,
+  DepartmentStats,
+} from '../../services/DashboardService';
 import DepartmentEmployees from './DepartmentEmployees';
 
 interface DepartmentManagerDashboardProps {
   departmentId?: string;
 }
 
-const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({ departmentId }) => {
+const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
+  departmentId,
+}) => {
   const [stats, setStats] = useState<DepartmentStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +25,9 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
       }
 
       try {
-        const statsData = await DashboardService.getDepartmentStats(departmentId);
+        const statsData = await DashboardService.getDepartmentStats(
+          departmentId
+        );
         setStats(statsData);
         setLoading(false);
       } catch (err) {
@@ -42,7 +49,7 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
       <h2 className="text-2xl font-bold text-gray-800 mb-5">
         Trang chủ Quản lý Phòng ban
       </h2>
-      
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <div className="bg-white rounded-lg shadow p-6">
@@ -78,7 +85,9 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
             </div>
             <div>
               <p className="text-sm text-gray-500">Đơn nghỉ phép</p>
-              <h3 className="text-2xl font-bold">{stats.pendingLeaveRequests}</h3>
+              <h3 className="text-2xl font-bold">
+                {stats.pendingLeaveRequests}
+              </h3>
               <p className="text-sm text-yellow-500">Đang chờ duyệt</p>
             </div>
           </div>
@@ -91,7 +100,9 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
             </div>
             <div>
               <p className="text-sm text-gray-500">Hiệu suất phòng ban</p>
-              <h3 className="text-2xl font-bold">{stats.averagePerformance}%</h3>
+              <h3 className="text-2xl font-bold">
+                {stats.averagePerformance}%
+              </h3>
               <p className="text-sm text-purple-500">Đánh giá trung bình</p>
             </div>
           </div>
@@ -102,18 +113,28 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">Tổng quan nhóm</h3>
+            <h3 className="text-lg font-semibold text-gray-800">
+              Tổng quan nhóm
+            </h3>
           </div>
           <div className="p-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Chấm công hôm nay</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    Chấm công hôm nay
+                  </p>
                   <div className="flex items-center mt-1">
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-green-500 h-2 rounded-full" 
-                        style={{ width: `${(stats.attendance.present / stats.attendance.total) * 100}%` }}
+                      <div
+                        className="bg-green-500 h-2 rounded-full"
+                        style={{
+                          width: `${
+                            (stats.attendance.present /
+                              stats.attendance.total) *
+                            100
+                          }%`,
+                        }}
                       ></div>
                     </div>
                     <span className="text-sm font-medium text-gray-700 ml-2">
@@ -123,7 +144,7 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              {/* <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-900">Hoàn thành kế hoạch</p>
                   <div className="flex items-center mt-1">
@@ -138,15 +159,17 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
                     </span>
                   </div>
                 </div>
-              </div>
+              </div> */}
 
-              <div className="flex items-center justify-between">
+              {/* <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Tiến độ đào tạo</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    Tiến độ đào tạo
+                  </p>
                   <div className="flex items-center mt-1">
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-purple-500 h-2 rounded-full" 
+                      <div
+                        className="bg-purple-500 h-2 rounded-full"
                         style={{ width: `${stats.trainingProgress}%` }}
                       ></div>
                     </div>
@@ -155,12 +178,10 @@ const DepartmentManagerDashboard: React.FC<DepartmentManagerDashboardProps> = ({
                     </span>
                   </div>
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
-
-        
       </div>
 
       {/* Danh sách nhân viên trong phòng ban */}

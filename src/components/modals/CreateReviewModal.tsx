@@ -22,12 +22,10 @@ interface CreateReviewModalProps {
       criteriaId: number;
       score: number;
       comment: string;
-    }[];
-    comments?: string;
+    }[];    comments?: string;
     strengths?: string;
     weaknesses?: string;
     improvement?: string;
-    status?: string;
     totalScore?: number;
   }) => void;
 }
@@ -49,8 +47,7 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
   const [scores, setScores] = useState<{ criteriaId: number; score: number; comment: string }[]>([]);
   const [comments, setComments] = useState<string>('');
   const [strengths, setStrengths] = useState<string>('');
-  const [weaknesses, setWeaknesses] = useState<string>('');
-  const [improvement, setImprovement] = useState<string>('');
+  const [weaknesses, setWeaknesses] = useState<string>('');  const [improvement, setImprovement] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,7 +57,6 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
       fetchDepartments();
     }
   }, [isOpen, isCompanyWide, employeeId]);
-
   // Reset form khi mở modal và thiết lập nhân viên nếu có employeeId
   useEffect(() => {
     if (isOpen) {
@@ -69,8 +65,7 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
       setReviewDate(new Date().toISOString().split('T')[0]);
       setComments('');
       setStrengths('');
-      setWeaknesses('');
-      setImprovement('');
+      setWeaknesses('');      setImprovement('');
       setError(null);
 
       // Nếu không có employeeId được chỉ định
@@ -215,9 +210,7 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
       const criterion = criteria.find(c => c.id === score.criteriaId);
       if (!criterion) return sum;
       return sum + (score.score * criterion.weight / 100);
-    }, 0);
-
-    onSubmit({
+    }, 0);    onSubmit({
       employeeId: selectedEmployeeId,
       reviewDate,
       scores,
@@ -225,7 +218,6 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
       strengths,
       weaknesses,
       improvement,
-      status: 'DRAFT',
       totalScore
     });
   };
@@ -374,17 +366,14 @@ const CreateReviewModal: React.FC<CreateReviewModalProps> = ({
               rows={3}
             />
           </div>
-        </div>
-
-        <div>
+        </div>        <div>
           <label className="block text-sm font-medium text-gray-700">Phương hướng cải thiện</label>
           <textarea
             value={improvement}
             onChange={(e) => setImprovement(e.target.value)}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             rows={3}
-          />
-        </div>
+          />        </div>
 
         <div className="flex justify-end pt-4 border-t">
           <button

@@ -13,19 +13,6 @@ import { DepartmentService, Department } from '../services/DepartmentService';
 import * as ReactHotToast from 'react-hot-toast';
 
 const toast = ReactHotToast.toast;
-const Toaster = ReactHotToast.Toaster;
-
-interface Employee {
-  id: number;
-  fullName: string;
-  email: string;
-}
-
-interface Plan {
-  id: number;
-  title: string;
-  description: string;
-}
 
 interface DepartmentReview {
   reviewId: number;
@@ -68,7 +55,7 @@ interface DepartmentPerformance {
 }
 
 const formatScore = (score: string | number | undefined) => {
-  if (!score) return 'N/A';
+  if (!score) return '0';
   return typeof score === 'string' ? parseFloat(score).toFixed(2) : score.toFixed(2);
 };
 
@@ -114,23 +101,33 @@ const Performance: React.FC = () => {
   const [loadingReviewDetails, setLoadingReviewDetails] = useState(false);
   const [isSelectedPlanCompanyWide, setIsSelectedPlanCompanyWide] = useState<boolean>(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [planToDelete, setPlanToDelete] = useState<number | null>(null);
-  const [planTitleToDelete, setPlanTitleToDelete] = useState<string>('');
+  const [planToDelete, setPlanToDelete] = useState<number | null>(null);  const [planTitleToDelete, setPlanTitleToDelete] = useState<string>('');
   const [isDeleting, setIsDeleting] = useState(false);
-  
-  // Bộ lọc và sắp xếp
+    // Bộ lọc và sắp xếp
   const [yearFilter, setYearFilter] = useState<number>(new Date().getFullYear());
   const [monthFilter, setMonthFilter] = useState<number>(new Date().getMonth() + 1); // Tháng hiện tại (getMonth() trả về 0-11)
   const [allPlans, setAllPlans] = useState<PerformancePlan[]>([]);
   
   // Không cần sử dụng showPlanDetails nữa vì ta chuyển sang trang riêng
-
   const isManager = currentUser?.role?.roleType === 'DEPARTMENT_HEAD';
   const isSystemAdmin = currentUser?.role?.roleType === 'SYSTEM_ADMIN';
   const isHRStaff = currentUser?.role?.roleType === 'HR_STAFF';
   const isAdmin = isSystemAdmin || isHRStaff;
-  const isRegularEmployee = !isManager && !isAdmin;   
+  const isRegularEmployee = !isManager && !isAdmin;
   
+  // Debug logs được gọi mỗi khi component re-render
+  useEffect(() => {
+    console.log('=== PERFORMANCE DEBUG ===');
+    console.log('currentUser:', currentUser);
+    console.log('currentUser?.role:', currentUser?.role);
+    console.log('roleType:', currentUser?.role?.roleType);
+    console.log('isManager:', isManager);
+    console.log('isSystemAdmin:', isSystemAdmin);
+    console.log('isHRStaff:', isHRStaff);
+    console.log('isAdmin:', isAdmin);
+    console.log('canApprove (isAdmin || isManager):', isAdmin || isManager);
+    console.log('========================');
+  }, [currentUser, isManager, isSystemAdmin, isHRStaff, isAdmin]);
   // Sử dụng useRef để lưu trữ các state cần thiết cho updateAllPlans
   // Ref không gây re-render khi cập nhật giá trị
   const stateRef = useRef({
@@ -156,7 +153,6 @@ const Performance: React.FC = () => {
     };
   }, [monthFilter, yearFilter, companyWidePlans, allDepartmentPlans, plans, isAdmin, isManager]);
   
-  // Hàm updateAllPlans sử dụng giá trị từ ref, không phụ thuộc vào closure
   const updateAllPlans = () => {
     console.log('Đang cập nhật danh sách kế hoạch...');
     const {
@@ -439,9 +435,7 @@ const Performance: React.FC = () => {
       }
       setLoading(false);
     }
-  };
-
-  const handleCreateReview = async (data: {
+  };  const handleCreateReview = async (data: {
     employeeId: number;
     reviewDate: string;
     scores: {
@@ -453,7 +447,6 @@ const Performance: React.FC = () => {
     strengths?: string;
     weaknesses?: string;
     improvement?: string;
-    status?: string;
     totalScore?: number;
   }) => {
     try {
@@ -472,13 +465,22 @@ const Performance: React.FC = () => {
       
       setIsCreateReviewModalOpen(false);
     } catch (err) {
+      console.error('Error creating review:', err);
       setError('Tạo đánh giá thất bại');
     }
-  };
-
-  const handleEditReview = async (reviewId: number, data: any) => {
+  };  const handleEditReview = async (reviewId: number, data: {
+    reviewDate: string;
+    scores: any[];
+    comments?: string;
+    strengths?: string;
+    weaknesses?: string;
+    improvement?: string;
+  }) => {
     try {
+      // Cập nhật đánh giá hiệu suất - chỉ cần cập nhật là coi như đã đánh giá
       await PerformanceService.updateReview(reviewId, data);
+      
+      toast.success('Đánh giá đã được cập nhật thành công!');
       
       if (isAdmin) {
         fetchOverallPerformance();
@@ -700,17 +702,32 @@ const Performance: React.FC = () => {
                       <div className="text-xs text-gray-500">
                         {Math.round((new Date(plan.endDate).getTime() - new Date(plan.startDate).getTime()) / (1000 * 60 * 60 * 24))} ngày
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {new Date(plan.endDate) > new Date() ? (
-                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                          Đang diễn ra
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                          Đã kết thúc
-                        </span>
-                      )}
+                    </td>                    <td className="px-6 py-4">
+                      {(() => {
+                        const today = new Date();
+                        const startDate = new Date(plan.startDate);
+                        const endDate = new Date(plan.endDate);
+                        
+                        if (today < startDate) {
+                          return (
+                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                              Sắp diễn ra
+                            </span>
+                          );
+                        } else if (today >= startDate && today <= endDate) {
+                          return (
+                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                              Đang diễn ra
+                            </span>
+                          );
+                        } else {
+                          return (
+                            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                              Đã kết thúc
+                            </span>
+                          );
+                        }
+                      })()}
                     </td>
                     <td className="px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-center space-x-3">                        
@@ -737,7 +754,7 @@ const Performance: React.FC = () => {
                           </button>
                         )}
                         
-                        {/* Nút thêm đánh giá (admin và manager phòng ban liên quan) */}
+                        {/* Nút thêm đánh giá (admin và manager phòng ban liên quan)
                         {(isAdmin || (isManager && (!plan.departments || plan.departments.some(dept => dept.id === currentUser?.departmentId)))) && (
                           <button
                             className="text-blue-500 hover:text-blue-700"
@@ -750,7 +767,7 @@ const Performance: React.FC = () => {
                           >
                             <i className="fas fa-plus-circle"></i>
                           </button>
-                        )}
+                        )} */}
                         
                         {/* Nút xóa kế hoạch (chỉ cho admin) */}
                         {isAdmin && (
@@ -901,21 +918,40 @@ const Performance: React.FC = () => {
                         <div className={`text-sm ${getScoreClass(review.totalScore)}`}>
                           {formatScore(review.totalScore)}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          review.status === 'APPROVED' 
-                            ? 'bg-green-100 text-green-800' 
-                            : review.status === 'REJECTED'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {review.status === 'APPROVED' 
-                            ? 'Đã phê duyệt' 
-                            : review.status === 'REJECTED'
-                              ? 'Đã từ chối'
-                              : 'Đang xử lý'}
-                        </span>
+                      </td>                      <td className="px-6 py-4 whitespace-nowrap">
+                        {(() => {
+                          if (!review.plan?.startDate || !review.plan?.endDate) {
+                            return (
+                              <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                N/A
+                              </span>
+                            );
+                          }
+                          
+                          const today = new Date();
+                          const startDate = new Date(review.plan.startDate);
+                          const endDate = new Date(review.plan.endDate);
+                          
+                          if (today < startDate) {
+                            return (
+                              <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                Sắp diễn ra
+                              </span>
+                            );
+                          } else if (today >= startDate && today <= endDate) {
+                            return (
+                              <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Đang diễn ra
+                              </span>
+                            );
+                          } else {
+                            return (
+                              <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                Đã kết thúc
+                              </span>
+                            );
+                          }
+                        })()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <button
@@ -967,9 +1003,7 @@ const Performance: React.FC = () => {
           criteria={selectedPlan.criteria}
           onSubmit={handleCreateReview}
         />
-      )}
-
-      {isEditReviewModalOpen && selectedReview && (
+      )}      {isEditReviewModalOpen && selectedReview && (
         <EditReviewModal
           isOpen={isEditReviewModalOpen}
           onClose={() => {
@@ -978,12 +1012,10 @@ const Performance: React.FC = () => {
             setSelectedReviewDetails(null);
           }}
           review={selectedReview}
-          criteria={selectedReviewDetails?.plan?.criteria || []}
-          onSubmit={(data) => {
+          criteria={selectedReviewDetails?.plan?.criteria || []}          onSubmit={(data) => {
             if (selectedReview) {
               handleEditReview(selectedReview.reviewId, data);
-            }
-          }}
+            }          }}
           isReadOnly={isRegularEmployee}
         />
       )}

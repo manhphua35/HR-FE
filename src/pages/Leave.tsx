@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { LeaveService, LeaveRequest, LeaveStatus, LeaveType, HolidayBatch } from '../services/LeaveService';
+import { DepartmentService } from '../services/DepartmentService';
 import { useAuth } from '../contexts/AuthContext';
 import { format } from 'date-fns';
-import axiosInstance from '../config/axios';
 import { CreateLeaveModal } from '../components/modals/LeaveModal';
 
 // Tương tự Attendance, tạo enum để quản lý chế độ xem
@@ -38,15 +38,11 @@ const months = [
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: 5 }, (_, index) => currentYear - index);
 
-// Interface cho cache user data
-interface UserInfo {
-  id: number;
-  fullName: string;
-  email: string;
-  department?: {
-    id: number;
-    name: string;
-  };
+// Interface cho modal thông báo
+interface NotificationModalData {
+  title: string;
+  message: string;
+  type: 'success' | 'error' | 'warning' | 'info';
 }
 
 // Thêm helper function để chuyển đổi loại nghỉ thành nhãn tiếng Việt
@@ -147,6 +143,26 @@ const Leave: React.FC = () => {
   const [leaveCurrentPage, setLeaveCurrentPage] = useState(0);
   const [leaveItemsPerPage, setLeaveItemsPerPage] = useState(10); // Số đơn nghỉ trên mỗi trang
 
+  // State cho modal thông báo
+  const [notificationModal, setNotificationModal] = useState<NotificationModalData | null>(null);
+
+  // Hàm hiển thị modal thông báo
+  const showNotification = (title: string, message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+    setNotificationModal({ title, message, type });
+    
+    // Tự động đóng modal sau 5 giây đối với thông báo thành công
+    if (type === 'success') {
+      setTimeout(() => {
+        setNotificationModal(null);
+      }, 5000);
+    }
+  };
+
+  // Hàm đóng modal thông báo
+  const closeNotification = () => {
+    setNotificationModal(null);
+  };
+
   // Helper function to handle pagination navigation after deletion
   const adjustPaginationAfterDeletion = (
     currentItems: any[], 
@@ -164,28 +180,62 @@ const Leave: React.FC = () => {
     else if (currentPageIndex > 0 && currentItems.length > 0 && 
              currentPageIndex * itemsPerPageCount >= currentItems.length) {
       setPageFunction(currentPageIndex - 1);
-    }
-  };
+    }  };
 
-  useEffect(() => {
-    fetchLeaves();
-  }, [isAdmin, startDate, endDate, status, type, viewMode, selectedDate, selectedMonth, selectedYear]);
+  const fetchLeaves = useCallback(async () => {
+    try {
+      setLoading(true);
+      let data: LeaveRequest[];
 
-  // Thêm useEffect để lấy danh sách phòng ban
-  useEffect(() => {
-    if (isAdmin) {
-      fetchDepartments();
-    }
-  }, [isAdmin]);
+      switch (viewMode) {
+        case ViewMode.SPECIFIC_DATE:
+          // Lấy dữ liệu nghỉ phép cho ngày cụ thể
+          data = await LeaveService.getLeavesBySpecificDate(selectedDate);
+          break;
+          
+        case ViewMode.HISTORY_MONTH:
+          // Lấy dữ liệu nghỉ phép cho tháng cụ thể
+          data = await LeaveService.getLeavesByMonth(selectedYear, selectedMonth);
+          break;
+          
+        default:
+          // Chế độ mặc định - lấy theo filter
+          const params: any = {};
+          if (startDate) params.startDate = startDate;
+          if (endDate) params.endDate = endDate;
+          if (status !== 'ALL') params.status = status;
+          if (type !== 'ALL') params.type = type;
+          
+          if (isAdmin) {
+            // Admin và HR xem tất cả đơn
+            data = await LeaveService.getAllLeaves(params);
+          } else if (isDepartmentHead && currentUser?.departmentId) {
+            // Trưởng phòng xem đơn của phòng ban mình
+            params.departmentId = currentUser.departmentId;
+            data = await LeaveService.getDepartmentLeaves(params);
+          } else {
+            // Nhân viên thường xem đơn của mình với bộ lọc
+            data = await LeaveService.getMyLeaves(params);
+          }
+          break;
+      }
 
-  // Thêm useEffect để lấy danh sách đợt nghỉ khi tab đổi hoặc component mount
-  useEffect(() => {
-    if (activeTab === TabView.HOLIDAY_BATCHES && isAdmin) {
-      fetchHolidayBatches();
+      // Sort by createdAt in descending order
+      const sortedData = [...data].sort((a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setLeaves(sortedData);
+      
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch leaves:', err);
+      setError('Không thể tải dữ liệu nghỉ phép');
+    } finally {
+      setLoading(false);
     }
-  }, [activeTab, isAdmin]);
-    // Hàm lấy danh sách đợt nghỉ
-  const fetchHolidayBatches = async () => {
+  }, [isAdmin, isDepartmentHead, currentUser?.departmentId, viewMode, selectedDate, selectedYear, selectedMonth, startDate, endDate, status, type]);
+  // Hàm lấy danh sách đợt nghỉ
+  const fetchHolidayBatches = useCallback(async () => {
     if (!isAdmin) return;
     
     try {
@@ -199,7 +249,32 @@ const Leave: React.FC = () => {
     } finally {
       setLoadingBatches(false);
     }
-  };
+  }, [isAdmin]);
+  // Hàm lấy danh sách phòng ban
+  const fetchDepartments = useCallback(async () => {
+    try {
+      const departmentData = await DepartmentService.getDepartments();
+      setDepartments(departmentData.map(dept => ({ id: dept.id, name: dept.name })));
+    } catch (err) {
+      console.error('Failed to fetch departments:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLeaves();
+  }, [fetchLeaves]);  // Thêm useEffect để lấy danh sách phòng ban khi cần thiết
+  // useEffect(() => {
+  //   if (isAdmin) {
+  //     fetchDepartments();
+  //   }
+  // }, [isAdmin, fetchDepartments]);
+
+  // Thêm useEffect để lấy danh sách đợt nghỉ khi tab đổi hoặc component mount
+  useEffect(() => {
+    if (activeTab === TabView.HOLIDAY_BATCHES && isAdmin) {
+      fetchHolidayBatches();
+    }
+  }, [activeTab, isAdmin, fetchHolidayBatches]);
   
   // Hàm lấy chi tiết đợt nghỉ
   const fetchBatchDetails = async (batchId: string) => {
@@ -228,7 +303,6 @@ const Leave: React.FC = () => {
     try {
       setDeletingBatch(true);
       setError(null); // Clear any previous errors
-      
       const result = await LeaveService.deleteHolidayBatch(selectedBatch.id);
       
       // Đóng modal và reset state trước
@@ -246,14 +320,17 @@ const Leave: React.FC = () => {
       
       // Fetch lại data từ server để đảm bảo đồng bộ
       await fetchHolidayBatches();
-      
-      // Cập nhật lại danh sách leaves nếu cần
+        // Cập nhật lại danh sách leaves nếu cần
       if (activeTab === TabView.LEAVES) {
         await fetchLeaves();
       }
       
       // Hiển thị thông báo thành công
-      alert(`Đã xóa thành công ${result.deletedCount} đơn nghỉ phép thuộc đợt nghỉ này`);
+      showNotification(
+        'Xóa đợt nghỉ thành công',
+        `Đã xóa thành công ${result.deletedCount} đơn nghỉ phép thuộc đợt nghỉ này`,
+        'success'
+      );
     } catch (err) {
       console.error('Failed to delete holiday batch:', err);
       setError('Không thể xóa đợt nghỉ');
@@ -277,72 +354,10 @@ const Leave: React.FC = () => {
       fetchLeaves();
     }
   };
-  
-  // Hàm xử lý khi click vào một đợt nghỉ
+    // Hàm xử lý khi click vào một đợt nghỉ
   const handleBatchClick = (batch: HolidayBatch) => {
     setSelectedBatch(batch);
     fetchBatchDetails(batch.id);
-  };
-
-  // Hàm lấy danh sách phòng ban
-  const fetchDepartments = async () => {
-    try {
-      const response = await axiosInstance.get('/departments');
-      setDepartments(response.data.data);
-    } catch (err) {
-      console.error('Failed to fetch departments:', err);
-    }
-  };
-
-  const fetchLeaves = async () => {
-    try {
-      setLoading(true);
-      let data: LeaveRequest[];      switch (viewMode) {
-        case ViewMode.SPECIFIC_DATE:
-          // Lấy dữ liệu nghỉ phép cho ngày cụ thể
-          data = await LeaveService.getLeavesBySpecificDate(selectedDate);
-          break;
-          
-        case ViewMode.HISTORY_MONTH:
-          // Lấy dữ liệu nghỉ phép cho tháng cụ thể
-          data = await LeaveService.getLeavesByMonth(selectedYear, selectedMonth);
-          break;
-          
-        default:
-          // Chế độ mặc định - lấy theo filter
-          const params: any = {};
-          if (startDate) params.startDate = startDate;
-          if (endDate) params.endDate = endDate;
-          if (status !== 'ALL') params.status = status;
-          if (type !== 'ALL') params.type = type;
-          
-          if (isAdmin) {
-            // Admin và HR xem tất cả đơn
-            data = await LeaveService.getAllLeaves(params);
-          } else if (isDepartmentHead && currentUser?.departmentId) {
-            // Trưởng phòng xem đơn của phòng ban mình
-            params.departmentId = currentUser.departmentId;
-            data = await LeaveService.getDepartmentLeaves(params);
-          } else {
-            // Nhân viên thường chỉ xem đơn của mình
-            data = await LeaveService.getMyLeaves();
-          }
-          break;
-      }
-
-      // Sort by createdAt in descending order
-      const sortedData = [...data].sort((a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-      setLeaves(sortedData);
-      
-      setError(null);
-    } catch (err) {
-      console.error('Failed to fetch leaves:', err);
-      setError('Không thể tải dữ liệu nghỉ phép');
-    } finally {
-      setLoading(false);
-    }
   };
 
   // Mở modal xác nhận duyệt đơn
@@ -534,7 +549,6 @@ const Leave: React.FC = () => {
   const handleViewModeChange = (mode: ViewMode) => {
     setViewMode(mode);
   };
-
   // Hàm xử lý thay đổi form tạo kỳ nghỉ lễ
   const handleHolidayFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -547,22 +561,18 @@ const Leave: React.FC = () => {
         allDepartments: checked,
         departmentIds: checked ? [] : prev.departmentIds
       }));
+      
+      // Fetch departments khi cần thiết
+      if (!checked && departments.length === 0) {
+        fetchDepartments();
+      }
     } else {
       setHolidayForm(prev => ({
         ...prev,
         [name]: value
       }));
-    }
-  };
+    }  };
 
-  // Hàm xử lý thay đổi select nhiều phòng ban
-  const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedOptions = Array.from(e.target.selectedOptions).map(option => Number(option.value));
-    setHolidayForm(prev => ({
-      ...prev,
-      departmentIds: selectedOptions
-    }));
-  };
   // Hàm tạo kỳ nghỉ lễ
   const handleCreateHoliday = async () => {
     try {
@@ -606,15 +616,18 @@ const Leave: React.FC = () => {
         allDepartments: true,
         departmentIds: []
       });
-      
-      // Cập nhật lại danh sách nghỉ phép và đợt nghỉ
+        // Cập nhật lại danh sách nghỉ phép và đợt nghỉ
       await Promise.all([
         fetchLeaves(),
         fetchHolidayBatches()
       ]);
       
       // Hiển thị thông báo thành công
-      alert(`Đã tạo thành công ${result.count} đơn nghỉ lễ`);
+      showNotification(
+        'Tạo kỳ nghỉ lễ thành công',
+        `Đã tạo thành công ${result.count} đơn nghỉ lễ`,
+        'success'
+      );
       
     } catch (err: any) {
       console.error('Failed to create holiday:', err);
@@ -887,10 +900,8 @@ const Leave: React.FC = () => {
                         Lý do: {leave.rejectionReason.length > 20 ? leave.rejectionReason.substring(0, 20) + '...' : leave.rejectionReason}
                       </div>
                     )}
-                  </td>
-                  <td className="px-6 py-4">
+                  </td>                  <td className="px-6 py-4">
                     {leave.approver ? (
-                      console.log('leave.approver', leave.approver),
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-8 w-8">
                           <img
@@ -1212,10 +1223,8 @@ const Leave: React.FC = () => {
           {renderActionButtons()}
           
           {/* Điều khiển chế độ xem */}
-          {renderViewModeControls()}
-          
-          {/* Bộ lọc */}
-          {isAdmin && renderFilters()}
+          {renderViewModeControls()}          {/* Bộ lọc - hiển thị cho tất cả user khi ở chế độ DEFAULT */}
+          {viewMode === ViewMode.DEFAULT && renderFilters()}
           
           {/* Danh sách nghỉ phép */}
           <div className="bg-white rounded-lg shadow overflow-x-auto">
@@ -1451,24 +1460,42 @@ const Leave: React.FC = () => {
                 <span>Áp dụng cho tất cả các phòng ban</span>
               </label>
             </div>
-            
-            {!holidayForm.allDepartments && (
+              {!holidayForm.allDepartments && (
               <div className="mb-4">
                 <label className="block text-gray-700 mb-2">Chọn phòng ban</label>
-                <select
-                  multiple
-                  className="w-full p-2 border rounded"
-                  size={5}
-                  onChange={handleDepartmentChange}
-                  value={holidayForm.departmentIds.map(id => id.toString())}
-                >
-                  {departments.map(dept => (
-                    <option key={dept.id} value={dept.id}>
-                      {dept.name}
-                    </option>
-                  ))}
-                </select>
-                <small className="text-gray-500">Nhấn Ctrl hoặc Cmd để chọn nhiều phòng ban</small>
+                <div className="border rounded p-3 max-h-48 overflow-y-auto">
+                  {departments.length > 0 ? (
+                    departments.map(dept => (
+                      <div key={dept.id} className="flex items-center mb-2">
+                        <input
+                          type="checkbox"
+                          id={`dept-${dept.id}`}
+                          className="mr-2"
+                          checked={holidayForm.departmentIds.includes(dept.id)}
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            setHolidayForm(prev => ({
+                              ...prev,
+                              departmentIds: isChecked 
+                                ? [...prev.departmentIds, dept.id]
+                                : prev.departmentIds.filter(id => id !== dept.id)
+                            }));
+                          }}
+                        />
+                        <label htmlFor={`dept-${dept.id}`} className="text-sm cursor-pointer">
+                          {dept.name}
+                        </label>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-gray-500 text-sm">Đang tải danh sách phòng ban...</div>
+                  )}
+                </div>
+                {holidayForm.departmentIds.length > 0 && (
+                  <small className="text-blue-600 mt-1 block">
+                    Đã chọn {holidayForm.departmentIds.length} phòng ban
+                  </small>
+                )}
               </div>
             )}
             
@@ -1537,6 +1564,72 @@ const Leave: React.FC = () => {
                     Đang xử lý...
                   </>
                 ) : 'Xóa'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}      {/* Modal thông báo */}
+      {notificationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-full shadow-xl">
+            <div className="flex items-center mb-4">
+              {/* Icon dựa trên type */}
+              <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
+                notificationModal.type === 'success' ? 'bg-green-100' :
+                notificationModal.type === 'error' ? 'bg-red-100' :
+                notificationModal.type === 'warning' ? 'bg-yellow-100' :
+                'bg-blue-100'
+              }`}>
+                {notificationModal.type === 'success' && (
+                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+                {notificationModal.type === 'error' && (
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                )}
+                {notificationModal.type === 'warning' && (
+                  <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                )}
+                {notificationModal.type === 'info' && (
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+              </div>
+              
+              {/* Title */}
+              <h2 className={`text-lg font-semibold ${
+                notificationModal.type === 'success' ? 'text-green-800' :
+                notificationModal.type === 'error' ? 'text-red-800' :
+                notificationModal.type === 'warning' ? 'text-yellow-800' :
+                'text-blue-800'
+              }`}>
+                {notificationModal.title}
+              </h2>
+            </div>
+            
+            {/* Message */}
+            <p className="text-gray-700 mb-6 leading-relaxed">
+              {notificationModal.message}
+            </p>
+            
+            {/* Buttons */}
+            <div className="flex justify-end">
+              <button
+                onClick={closeNotification}
+                className={`px-6 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+                  notificationModal.type === 'success' ? 'bg-green-600 hover:bg-green-700' :
+                  notificationModal.type === 'error' ? 'bg-red-600 hover:bg-red-700' :
+                  notificationModal.type === 'warning' ? 'bg-yellow-600 hover:bg-yellow-700' :
+                  'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                Đóng
               </button>
             </div>
           </div>

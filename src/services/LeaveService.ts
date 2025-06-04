@@ -93,9 +93,9 @@ export const LeaveService = {
     }
   },
 
-  async getMyLeaves(): Promise<LeaveRequest[]> {
+  async getMyLeaves(params?: GetAllLeavesParams): Promise<LeaveRequest[]> {
     try {
-      const response = await axiosInstance.get<ApiResponse<LeaveRequest[]>>('/leaves/my-leaves');
+      const response = await axiosInstance.get<ApiResponse<LeaveRequest[]>>('/leaves/my-leaves', { params });
       return response.data.data;
     } catch (error) {
       console.error('Error fetching my leaves:', error);

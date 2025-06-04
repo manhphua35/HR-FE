@@ -81,14 +81,12 @@ const EditPlanModal: React.FC<EditPlanModalProps> = ({
     
     if (isAdmin && selectedDepartmentIds.length > 0 && onSelectDepartments && !isCompanyWide) {
       onSelectDepartments(selectedDepartmentIds);
-    }
-    
-    const planData = {
+    }    const planData = {
       title,
       description,
       startDate,
       endDate,
-      criteria,
+      criteria, // Giữ nguyên tiêu chí hiện tại, không cho phép chỉnh sửa
       status: plan.status || 'ACTIVE',
       isCompanyWide,
       departmentIds: !isCompanyWide ? selectedDepartmentIds : undefined
@@ -136,8 +134,7 @@ const EditPlanModal: React.FC<EditPlanModalProps> = ({
       setSelectedDepartmentIds(allIds);
       if (onSelectDepartments) {
         onSelectDepartments(allIds);
-      }
-    } else {
+      }    } else {
       setSelectedDepartmentIds([]);
       if (onSelectDepartments) {
         onSelectDepartments([]);
@@ -145,25 +142,6 @@ const EditPlanModal: React.FC<EditPlanModalProps> = ({
     }
   };
 
-  const handleCriteriaChange = (index: number, field: string, value: string | number) => {
-    const newCriteria = [...criteria];
-    (newCriteria[index] as any)[field] = field === 'weight' ? Number(value) : value;
-    setCriteria(newCriteria);
-  };
-
-  const addCriteria = () => {
-    const newId = Math.max(...criteria.map(c => c.id)) + 1;
-    setCriteria([...criteria, { id: newId, name: '', weight: 0, description: '' }]);
-  };
-
-  const removeCriteria = (index: number) => {
-    if (criteria.length <= 1) return;
-    const newCriteria = [...criteria];
-    newCriteria.splice(index, 1);
-    setCriteria(newCriteria);
-  };
-
-  // Xử lý khi toggle chế độ toàn công ty
   const handleCompanyWideToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
     setIsCompanyWide(e.target.checked);
     if (e.target.checked) {
@@ -173,7 +151,7 @@ const EditPlanModal: React.FC<EditPlanModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Chỉnh sửa kế hoạch đánh giá hiệu suất">
+    <Modal isOpen={isOpen} onClose={onClose} title="Chỉnh sửa kế hoạch (tiêu chí không thể thay đổi)">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">Tiêu đề</label>
@@ -270,64 +248,25 @@ const EditPlanModal: React.FC<EditPlanModalProps> = ({
               required
             />
           </div>
-        </div>
-
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="block text-sm font-medium text-gray-700">Tiêu chí đánh giá</label>
-            <button
-              type="button"
-              onClick={addCriteria}
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              + Thêm tiêu chí
-            </button>
-          </div>
-
+        </div>        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Tiêu chí đánh giá (không thể chỉnh sửa)</label>
+          
           {criteria.map((criterion, index) => (
-            <div key={criterion.id} className="mb-4 p-3 border rounded-md bg-gray-50">
+            <div key={criterion.id} className="mb-3 p-3 border rounded-md bg-gray-100">
               <div className="grid grid-cols-3 gap-3 mb-2">
                 <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700">Tên tiêu chí</label>
-                  <input
-                    type="text"
-                    value={criterion.name}
-                    onChange={(e) => handleCriteriaChange(index, 'name', e.target.value)}
-                    className="mt-1 block w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
+                  <label className="block text-xs font-medium text-gray-600">Tên tiêu chí</label>
+                  <div className="mt-1 text-sm text-gray-800">{criterion.name}</div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700">Trọng số (%)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={criterion.weight}
-                    onChange={(e) => handleCriteriaChange(index, 'weight', e.target.value)}
-                    className="mt-1 block w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  />
+                  <label className="block text-xs font-medium text-gray-600">Trọng số (%)</label>
+                  <div className="mt-1 text-sm text-gray-800">{criterion.weight}%</div>
                 </div>
               </div>
-              <div className="mb-2">
-                <label className="block text-xs font-medium text-gray-700">Mô tả tiêu chí</label>
-                <input
-                  type="text"
-                  value={criterion.description}
-                  onChange={(e) => handleCriteriaChange(index, 'description', e.target.value)}
-                  className="mt-1 block w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
+              <div>
+                <label className="block text-xs font-medium text-gray-600">Mô tả tiêu chí</label>
+                <div className="mt-1 text-sm text-gray-800">{criterion.description}</div>
               </div>
-              {criteria.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeCriteria(index)}
-                  className="text-xs text-red-600 hover:text-red-800"
-                >
-                  Xóa tiêu chí
-                </button>
-              )}
             </div>
           ))}
         </div>

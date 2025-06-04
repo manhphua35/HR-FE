@@ -90,7 +90,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     return role;
   };
 
-  console.log('Current User:', currentUser);
   return (
     <div className={`sidebar bg-indigo-800 text-white flex flex-col transition-all duration-300 ${sidebarCollapsed ? 'w-20' : 'w-64'}`}>
       {/* Logo and Toggle Button */}

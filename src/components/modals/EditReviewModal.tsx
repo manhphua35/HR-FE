@@ -12,8 +12,7 @@ interface EditReviewModalProps {
     name: string;
     weight: number;
     description: string;
-  }[];
-  onSubmit: (data: {
+  }[];  onSubmit: (data: {
     reviewDate: string;
     scores: {
       criteriaId: number;
@@ -23,8 +22,7 @@ interface EditReviewModalProps {
     comments?: string;
     strengths?: string;
     weaknesses?: string;
-    improvement?: string;
-  }) => void;
+    improvement?: string;  }) => void;
   isReadOnly?: boolean;
 }
 
@@ -35,25 +33,27 @@ const EditReviewModal: React.FC<EditReviewModalProps> = ({
   criteria,
   onSubmit,
   isReadOnly = false
-}) => {
+}) => {  console.log('=== EDITREVIEWMODAL DEBUG ===');
+  console.log('Props received:');
+  console.log('- isReadOnly:', isReadOnly);
+  console.log('================================');
+  
   const [reviewDate, setReviewDate] = useState('');
   const [scores, setScores] = useState<{
     criteriaId: number;
     score: number;
     comment: string;
-  }[]>([]);
-  const [comments, setComments] = useState('');
-  const [strengths, setStrengths] = useState('');
-  const [weaknesses, setWeaknesses] = useState('');
+  }[]>([]);  const [comments, setComments] = useState('');
+  const [strengths, setStrengths] = useState('');  const [weaknesses, setWeaknesses] = useState('');
   const [improvement, setImprovement] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const fetchReviewDetails = async () => {
+  useEffect(() => {    const fetchReviewDetails = async () => {
       try {
-        setLoading(true);
-        const data = await PerformanceService.getReviewDetails(review.reviewId);
+        setLoading(true);        const data = await PerformanceService.getReviewDetails(review.reviewId);
+        
+        console.log('Fetched review details:', data);
         
         setReviewDate(data.reviewDate);
         setScores(data.scores || []);
@@ -66,10 +66,7 @@ const EditReviewModal: React.FC<EditReviewModalProps> = ({
         setError('Lấy chi tiết đánh giá thất bại');
         setLoading(false);
       }
-    };
-
-    if (isOpen && review.reviewId) {
-      if (review.scores && review.scores.length > 0) {
+    };if (isOpen && review.reviewId) {      if (review.scores && review.scores.length > 0) {
         setReviewDate(review.reviewDate || '');
         setScores(review.scores);
         setComments(review.comments || '');
@@ -81,7 +78,7 @@ const EditReviewModal: React.FC<EditReviewModalProps> = ({
         fetchReviewDetails();
       }
     }
-  }, [isOpen, review.reviewId, review.scores]);
+  }, [isOpen, review.reviewId, review.scores, review.reviewDate, review.comments, review.strengths, review.weaknesses, review.improvement]);
 
   const handleScoreChange = (criteriaId: number, field: 'score' | 'comment', value: string | number) => {
     const newScores = [...scores];
@@ -102,9 +99,7 @@ const EditReviewModal: React.FC<EditReviewModalProps> = ({
     }
     
     setScores(newScores);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  };  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
       reviewDate,
@@ -152,24 +147,9 @@ const EditReviewModal: React.FC<EditReviewModalProps> = ({
               'bg-red-100 text-red-800'
             }`}>
               Điểm: {parseFloat(review.totalScore).toFixed(2)}
-            </div>
-          </div>
+            </div>          </div>
           <p className="text-sm text-gray-600">{review.planTitle}</p>
-          {review.status && (
-            <div className="mt-2">
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                review.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                review.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-800' :
-                'bg-yellow-100 text-yellow-800'
-              }`}>
-                {review.status === 'APPROVED' ? 'Đã duyệt' :
-                 review.status === 'SUBMITTED' ? 'Đã nộp' : 'Dự thảo'}
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div>
+        </div><div>
           <label className="block text-sm font-medium text-gray-700">Ngày đánh giá</label>
           <input
             type="date"
@@ -178,8 +158,7 @@ const EditReviewModal: React.FC<EditReviewModalProps> = ({
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             disabled={isReadOnly}
             required
-          />
-        </div>
+          />        </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Đánh giá các tiêu chí</label>

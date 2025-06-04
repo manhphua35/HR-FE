@@ -78,11 +78,11 @@ const Attendance: React.FC = () => {
     records: [],
     total: 0,
     page: 1,
-    limit: 10,
+    limit: 15,
     totalPages: 1
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(15);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
